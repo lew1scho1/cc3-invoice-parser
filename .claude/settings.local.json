@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-Content \"c:\\\\Users\\\\lew1s\\\\projects\\\\cc3-invoice-parser\\\\Invoice_Parser.js\" -Raw)",
+      "Bash(Set-Clipboard)"
+    ]
+  }
+}

@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>CC3 HAIR ORDER APP</title>
+  
+  <!-- ZXing 바코드 스캔 라이브러리 (더 강력하고 모바일 최적화) -->
+  <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #FFE4B5 0%, #FFB6C1 100%);
+      min-height: 100vh;
+      padding: 10px;
+      transition: background 0.3s ease;
+    }
+    
+    /* 회사별 배경 테마 */
+    body.theme-outre {
+      background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
+    }
+    
+    body.theme-sng {
+      background: linear-gradient(135deg, #4169E1 0%, #9370DB 100%);
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+    
+    /* ===== 헤더 ===== */
+    .header {
+      background: linear-gradient(135deg, #FFE4B5 0%, #FFB6C1 100%);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      position: relative;
+      transition: background 0.3s ease;
+    }
+    
+    .header.theme-outre {
+      background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
+    }
+    
+    .header.theme-sng {
+      background: linear-gradient(135deg, #4169E1 0%, #9370DB 100%);
+    }
+    
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0;
+    }
+    
+    .order-complete-header-btn {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.3);
+      color: white;
+      border: 2px solid white;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .order-complete-header-btn:active {
+      background: rgba(255,255,255,0.5);
+    }
+    
+    .content {
+      padding: 20px;
+    }
+    
+    /* ===== 바코드 입력 섹션 ===== */
+    #inputSection {
+      display: block;
+    }
+    
+    .input-label {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 15px;
+    }
+    
+    .barcode-container {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    #barcodeDisplay {
+      flex: 1;
+      height: 60px;
+      font-size: 32px;
+      font-weight: 700;
+      text-align: center;
+      border: 3px solid #FFB6C1;
+      border-radius: 12px;
+      padding: 10px;
+      letter-spacing: 3px;
+      background: #FFF8F0;
+      color: #333;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    
+    #barcodeDisplay.theme-outre {
+      border-color: #FF8C00;
+    }
+    
+    #barcodeDisplay.theme-sng {
+      border-color: #4169E1;
+    }
+    
+    .camera-btn {
+      height: 60px;
+      padding: 0 20px;
+      background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      white-space: nowrap;
+      transition: background 0.3s;
+    }
+    
+    .camera-btn.theme-outre {
+      background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
+    }
+    
+    .camera-btn.theme-sng {
+      background: linear-gradient(135deg, #9370DB 0%, #8A2BE2 100%);
+    }
+    
+    .camera-btn:active {
+      transform: scale(0.98);
+    }
+    
+    /* ===== 숫자 키패드 ===== */
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .key-btn {
+      height: 60px;
+      font-size: 24px;
+      font-weight: 700;
+      background: white;
+      border: 2px solid #FFB6C1;
+      border-radius: 12px;
+      color: #FFB6C1;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      user-select: none;
+      transition: border-color 0.3s, color 0.3s, background 0.3s;
+    }
+    
+    .key-btn.theme-outre {
+      border-color: #FF8C00;
+      color: #FF8C00;
+    }
+    
+    .key-btn.theme-sng {
+      border-color: #4169E1;
+      color: #4169E1;
+    }
+    
+    .key-btn:active {
+      transform: scale(0.95);
+      background: #FFF8F0;
+    }
+    
+    .key-btn.delete {
+      background: linear-gradient(135deg, #DC143C 0%, #B22222 100%);
+      color: white;
+      border: none;
+    }
+    
+    /* ===== 카메라 모달 ===== */
+    #cameraModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: black;
+      z-index: 9999;
+    }
+    
+    #cameraModal.active {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .camera-header {
+      background: rgba(255, 182, 193, 0.95);
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 600;
+      transition: background 0.3s;
+    }
+    
+    .camera-header.theme-outre {
+      background: rgba(255, 140, 0, 0.95);
+    }
+    
+    .camera-header.theme-sng {
+      background: rgba(65, 105, 225, 0.95);
+    }
+    
+    .camera-viewport {
+      flex: 1;
+      position: relative;
+      background: black;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    #canvas {
+      display: none;
+    }
+    
+    .camera-footer {
+      padding: 20px;
+      background: rgba(0,0,0,0.9);
+    }
+    
+    .close-camera-btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, #DC143C 0%, #B22222 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    
+    .close-camera-btn:active {
+      transform: scale(0.98);
+    }
+    
+    /* ===== 로딩 ===== */
+    #loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+    
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #FFB6C1;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+      transition: border-top-color 0.3s;
+    }
+    
+    .spinner.theme-outre {
+      border-top-color: #FF8C00;
+    }
+    
+    .spinner.theme-sng {
+      border-top-color: #4169E1;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+      font-size: 18px;
+      color: #FFB6C1;
+      font-weight: 600;
+      transition: color 0.3s;
+    }
+    
+    .loading-text.theme-outre {
+      color: #FF8C00;
+    }
+    
+    .loading-text.theme-sng {
+      color: #4169E1;
+    }
+    
+    /* ===== 결과 섹션 ===== */
+    #resultsSection {
+      display: none;
+    }
+    
+    /* 상단 액션 버튼 (4개 나란히) */
+    .action-buttons-top {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    
+    .action-btn-top {
+      height: 55px;
+      font-size: 18px;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      user-select: none;
+      transition: background 0.3s, transform 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    
+    .action-btn-top.add {
+      background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
+    }
+    
+    .action-btn-top.add.theme-outre {
+      background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
+    }
+    
+    .action-btn-top.add.theme-sng {
+      background: linear-gradient(135deg, #9370DB 0%, #8A2BE2 100%);
+    }
+    
+    .action-btn-top.save-camera {
+      background: linear-gradient(135deg, #4169E1 0%, #6495ED 100%);
+    }
+    
+    .action-btn-top.save-back {
+      background: linear-gradient(135deg, #808080 0%, #696969 100%);
+    }
+    
+    .action-btn-top.cart {
+      background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
+    }
+    
+    .action-btn-top:active {
+      transform: scale(0.98);
+    }
+    
+    .results-header {
+      display: none;
+    }
+    
+    .order-complete-btn {
+      display: none;
+    }
+    
+    /* ===== 수량 조절 버튼 ===== */
+    .quantity-controls {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .qty-btn {
+      height: 50px;
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+      user-select: none;
+      transition: background 0.3s;
+    }
+    
+    .qty-btn.theme-outre {
+      background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
+    }
+    
+    .qty-btn.theme-sng {
+      background: linear-gradient(135deg, #9370DB 0%, #8A2BE2 100%);
+    }
+    
+    .qty-btn:active {
+      transform: scale(0.95);
+    }
+    
+    .qty-btn.clear {
+      background: linear-gradient(135deg, #DC143C 0%, #B22222 100%);
+    }
+    
+    /* ===== 제품 테이블 ===== */
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    
+    .products-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    
+    .products-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .products-table th {
+      background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
+      color: white;
+      padding: 15px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+    
+    .products-table.theme-outre th {
+      background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
+    }
+    
+    .products-table.theme-sng th {
+      background: linear-gradient(135deg, #4169E1 0%, #9370DB 100%);
+    }
+    
+    .products-table td {
+      padding: 15px;
+      border-bottom: 1px solid #e0e0e0;
+      font-size: 16px;
+    }
+    
+    .products-table tbody tr {
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .products-table tbody tr:hover {
+      background-color: #FFF8F0;
+    }
+    
+    .products-table tbody tr.selected {
+      background-color: #FFE4B5 !important;
+      border-left: 4px solid #FFB6C1;
+      transition: border-left-color 0.3s;
+    }
+    
+    .products-table.theme-outre tbody tr.selected {
+      border-left-color: #FF8C00;
+    }
+    
+    .products-table.theme-sng tbody tr.selected {
+      border-left-color: #4169E1;
+    }
+    
+    .quantity-input {
+      width: 80px;
+      height: 45px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 700;
+      border: 2px solid #FFB6C1;
+      border-radius: 8px;
+      background: white;
+      color: #FFB6C1;
+      cursor: pointer;
+      outline: none !important;
+      transition: border-color 0.3s, color 0.3s;
+    }
+    
+    .quantity-input.theme-outre {
+      border-color: #FF8C00;
+      color: #FF8C00;
+    }
+    
+    .quantity-input.theme-sng {
+      border-color: #4169E1;
+      color: #4169E1;
+    }
+    
+    .quantity-input::-webkit-outer-spin-button,
+    .quantity-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    
+    /* 회사 뱃지 */
+    .company-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+    }
+    
+    .company-badge.outre {
+      background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
+    }
+    
+    .company-badge.sng {
+      background: linear-gradient(135deg, #4169E1 0%, #9370DB 100%);
+    }
+    
+    /* 주문 페이지 이동 버튼 */
+    .goto-order-btn {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #4169E1 0%, #6495ED 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+    }
+    
+    .goto-order-btn:active {
+      transform: scale(0.95);
+    }
+    
+    /* ===== 액션 버튼 ===== */
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .action-btn {
+      flex: 1;
+      padding: 18px;
+      font-size: 18px;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      user-select: none;
+      transition: background 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .action-btn.add {
+      background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
+      color: white;
+    }
+    
+    .action-btn.add.theme-outre {
+      background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
+    }
+    
+    .action-btn.add.theme-sng {
+      background: linear-gradient(135deg, #9370DB 0%, #8A2BE2 100%);
+    }
+    
+    .action-btn.save-camera {
+      background: linear-gradient(135deg, #4169E1 0%, #6495ED 100%);
+      color: white;
+    }
+    
+    .action-btn.save-back {
+      background: linear-gradient(135deg, #808080 0%, #696969 100%);
+      color: white;
+    }
+    
+    .action-btn:active {
+      transform: scale(0.98);
+    }
+    
+    /* ===== ORDER COMPLETE 모달 ===== */
+    #orderModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 10000;
+      overflow: auto;
+    }
+    
+    #orderModal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .order-modal-content {
+      background: white;
+      border-radius: 16px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    
+    .order-modal-header {
+      background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 16px 16px 0 0;
+      font-size: 22px;
+      font-weight: 700;
+      text-align: center;
+    }
+    
+    /* 회사 탭 */
+    .company-tabs {
+      display: flex;
+      background: #f5f5f5;
+      border-bottom: 2px solid #ddd;
+    }
+    
+    .company-tab {
+      flex: 1;
+      padding: 15px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #f5f5f5;
+      color: #999;
+      border: none;
+      transition: all 0.3s;
+    }
+    
+    .company-tab:hover {
+      background: #e8e8e8;
+    }
+    
+    .company-tab.active {
+      background: white;
+      color: #333;
+      border-bottom: 3px solid #FF8C00;
+    }
+    
+    .company-tab.active.tab-outre {
+      border-bottom-color: #FF8C00;
+    }
+    
+    .company-tab.active.tab-sng {
+      border-bottom-color: #4169E1;
+    }
+    
+    .order-modal-body {
+      flex: 1;
+      overflow: auto;
+      padding: 20px;
+    }
+    
+    .order-table-container {
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+    
+    .order-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    
+    .order-table th {
+      background: #f5f5f5;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid #ddd;
+    }
+    
+    .order-table td {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .empty-message {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+      font-size: 16px;
+    }
+    
+    .order-modal-footer {
+      padding: 20px;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .modal-btn {
+      flex: 1;
+      min-width: 120px;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: all 0.2s;
+    }
+    
+    .modal-btn:active {
+      transform: scale(0.98);
+    }
+    
+    .modal-btn.copy {
+      background: linear-gradient(135deg, #4169E1 0%, #6495ED 100%);
+      color: white;
+    }
+    
+    .modal-btn.clear-list {
+      background: linear-gradient(135deg, #DC143C 0%, #B22222 100%);
+      color: white;
+    }
+    
+    .modal-btn.close {
+      background: linear-gradient(135deg, #808080 0%, #696969 100%);
+      color: white;
+    }
+    
+    /* ===== 알림 ===== */
+    #alertMessage {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 20px 40px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      text-align: center;
+      z-index: 20000;
+      display: none;
+      max-width: 90%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    
+    #alertMessage.show {
+      display: block;
+      animation: fadeInOut 3s;
+    }
+    
+    @keyframes fadeInOut {
+      0%, 100% { opacity: 0; }
+      10%, 90% { opacity: 1; }
+    }
+    
+    /* ===== 반응형 ===== */
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 18px;
+      }
+      
+      .order-complete-header-btn {
+        font-size: 12px;
+        padding: 6px 12px;
+      }
+      
+      .quantity-controls {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      .qty-btn {
+        height: 45px;
+        font-size: 16px;
+      }
+      
+      .products-table th,
+      .products-table td {
+        padding: 10px;
+        font-size: 14px;
+      }
+      
+      .quantity-input {
+        width: 60px;
+        height: 40px;
+        font-size: 16px;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .barcode-container {
+        flex-direction: column;
+      }
+      
+      .camera-btn {
+        width: 100%;
+      }
+      
+      .action-buttons {
+        flex-direction: column;
+      }
+      
+      .order-modal-footer {
+        flex-direction: column;
+      }
+      
+      .modal-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🛒 CC3 HAIR ORDER APP</h1>
+      <button class="order-complete-header-btn" onclick="app.showOrderComplete()">
+        ORDER COMPLETE
+      </button>
+    </div>
+    
+    <div class="content">
+      <!-- 바코드 입력 섹션 -->
+      <div id="inputSection">
+        <div class="input-label">
+          🔍 바코드 또는 제품명을 입력하세요
+        </div>
+        
+        <div class="barcode-container">
+          <input type="text" id="barcodeDisplay" maxlength="50" inputmode="text">
+          <button class="camera-btn" onclick="app.openCamera()">📷 카메라</button>
+        </div>
+        
+        <div class="keypad">
+          <button class="key-btn" onclick="app.addDigit('1')">1</button>
+          <button class="key-btn" onclick="app.addDigit('2')">2</button>
+          <button class="key-btn" onclick="app.addDigit('3')">3</button>
+          <button class="key-btn" onclick="app.addDigit('4')">4</button>
+          <button class="key-btn" onclick="app.addDigit('5')">5</button>
+          <button class="key-btn" onclick="app.addDigit('6')">6</button>
+          <button class="key-btn" onclick="app.addDigit('7')">7</button>
+          <button class="key-btn" onclick="app.addDigit('8')">8</button>
+          <button class="key-btn" onclick="app.addDigit('9')">9</button>
+          <button class="key-btn delete" onclick="app.clearBarcode()">⌫</button>
+          <button class="key-btn" onclick="app.addDigit('0')">0</button>
+          <button class="key-btn delete" onclick="app.deleteDigit()">←</button>
+        </div>
+      </div>
+      
+      <!-- 로딩 -->
+      <div id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">검색 중...</div>
+      </div>
+      
+      <!-- 결과 섹션 -->
+      <div id="resultsSection">
+        <div class="action-buttons-top">
+          <button class="action-btn-top add" onclick="app.addToOrder()">
+            <span style="font-size: 24px;">➕</span>
+          </button>
+          <button class="action-btn-top save-camera" onclick="app.saveAndOpenCamera()">
+            <span style="font-size: 20px;">💾📷</span>
+          </button>
+          <button class="action-btn-top save-back" onclick="app.saveAndGoBack()">
+            <span style="font-size: 20px;">💾↩️</span>
+          </button>
+          <button class="action-btn-top cart" onclick="app.showOrderComplete()">
+            <span style="font-size: 24px;">🛒</span>
+          </button>
+        </div>
+        
+        <div class="quantity-controls">
+          <button class="qty-btn" onclick="app.adjustQuantity(1)">+1</button>
+          <button class="qty-btn" onclick="app.adjustQuantity(3)">+3</button>
+          <button class="qty-btn" onclick="app.adjustQuantity(6)">+6</button>
+          <button class="qty-btn" onclick="app.adjustQuantity(10)">+10</button>
+          <button class="qty-btn" onclick="app.adjustQuantity(12)">+12</button>
+          <button class="qty-btn clear" onclick="app.clearQuantity()">CLEAR</button>
+        </div>
+        
+        <div class="table-container">
+          <table class="products-table">
+            <thead>
+              <tr>
+                <th>수량</th>
+                <th>ITEM NAME</th>
+                <th>COLOR</th>
+                <th>회사</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 카메라 모달 -->
+  <div id="cameraModal">
+    <div class="camera-header">
+      📷 바코드를 화면 중앙에 맞추세요
+    </div>
+    <div class="camera-viewport">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+    <div class="camera-footer">
+      <button class="close-camera-btn" onclick="app.closeCamera()">✕ 닫기</button>
+    </div>
+  </div>
+  
+  <!-- ORDER COMPLETE 모달 -->
+  <div id="orderModal">
+    <div class="order-modal-content">
+      <div class="order-modal-header">
+        📦 주문 내역
+      </div>
+      
+      <!-- 회사 탭 -->
+      <div class="company-tabs">
+        <button class="company-tab tab-sng active" onclick="app.switchCompany('SNG')">
+          SNG
+        </button>
+        <button class="company-tab tab-outre" onclick="app.switchCompany('OUTRE')">
+          OUTRE
+        </button>
+      </div>
+      
+      <div class="order-modal-body" id="orderModalBody">
+        <!-- 데이터가 여기에 표시됩니다 -->
+      </div>
+      <div class="order-modal-footer">
+        <button class="modal-btn copy" onclick="app.copyOrderData()">
+          📋 복사하기
+        </button>
+        <button class="modal-btn clear-list" onclick="app.clearOrderList()">
+          🗑️ 리스트 비우기
+        </button>
+        <button class="modal-btn close" onclick="app.closeOrderModal()">
+          ✕ 닫기
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 알림 메시지 -->
+  <div id="alertMessage"></div>
+  
+  <script>
+    // ============================================================================
+    // CC3 HAIR ORDER APP - Frontend v4.1
+    // Multi-Company Support (OUTRE + SNG) + Product Search
+    // ============================================================================
+    
+    var app = {
+      // 상태
+      barcode: '',
+      products: [],
+      selectedRow: -1,
+      cameraActive: false,
+      processing: false,
+      orderData: {},  // { OUTRE: [], SNG: [] }
+      detectionBuffer: {},
+      currentCompany: null,  // 현재 스캔된 회사 (OUTRE or SNG)
+      viewingCompany: 'SNG',  // 장바구니에서 보고 있는 회사
+      
+      // DOM 요소
+      barcodeDisplay: null,
+      inputSection: null,
+      resultsSection: null,
+      loading: null,
+      productsTableBody: null,
+      cameraModal: null,
+      orderModal: null,
+      orderModalBody: null,
+      alertMessage: null,
+      
+      // 초기화
+      init: function() {
+        console.log('=== CC3 HAIR ORDER APP 시작 ===');
+        
+        // DOM 요소 캐싱
+        this.barcodeDisplay = document.getElementById('barcodeDisplay');
+        this.inputSection = document.getElementById('inputSection');
+        this.resultsSection = document.getElementById('resultsSection');
+        this.loading = document.getElementById('loading');
+        this.productsTableBody = document.getElementById('productsTableBody');
+        this.cameraModal = document.getElementById('cameraModal');
+        this.orderModal = document.getElementById('orderModal');
+        this.orderModalBody = document.getElementById('orderModalBody');
+        this.alertMessage = document.getElementById('alertMessage');
+        
+        // 바코드 입력 이벤트
+        this.barcodeDisplay.addEventListener('input', this.onBarcodeInput.bind(this));
+        this.barcodeDisplay.addEventListener('paste', this.onBarcodePaste.bind(this));
+        this.barcodeDisplay.addEventListener('keydown', this.onBarcodeKeyDown.bind(this));
+        
+        // 바코드 스캐너 이벤트
+        this.setupBarcodeScanner();
+        
+        console.log('초기화 완료');
+      },
+      
+      // 바코드 스캐너 설정
+      setupBarcodeScanner: function() {
+        var self = this;
+        var scanBuffer = '';
+        var scanTimeout = null;
+        
+        document.addEventListener('keydown', function(e) {
+          if (self.cameraActive || self.orderModal.classList.contains('active')) {
+            return;
+          }
+          
+          if (e.key.length === 1 && /[0-9]/.test(e.key)) {
+            scanBuffer += e.key;
+            
+            clearTimeout(scanTimeout);
+            scanTimeout = setTimeout(function() {
+              if (scanBuffer.length === 12) {
+                console.log('스캐너 입력:', scanBuffer);
+                self.barcode = scanBuffer;
+                self.barcodeDisplay.value = scanBuffer;
+                self.searchProduct();
+              }
+              scanBuffer = '';
+            }, 100);
+          } else if (e.key === 'Enter' && scanBuffer.length === 12) {
+            e.preventDefault();
+            console.log('스캐너 입력 (Enter):', scanBuffer);
+            self.barcode = scanBuffer;
+            self.barcodeDisplay.value = scanBuffer;
+            scanBuffer = '';
+            clearTimeout(scanTimeout);
+            self.searchProduct();
+          }
+        });
+      },
+      
+      // 바코드 입력
+      onBarcodeInput: function(e) {
+        this.barcode = e.target.value.trim();
+      },
+      
+      // 바코드 키다운
+      onBarcodeKeyDown: function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.searchProduct();
+        }
+      },
+      
+      // 바코드 붙여넣기
+      onBarcodePaste: function(e) {
+        e.preventDefault();
+        var pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        var cleaned = pastedText.trim().substring(0, 50);
+        
+        this.barcode = cleaned;
+        this.barcodeDisplay.value = cleaned;
+        
+        var self = this;
+        setTimeout(function() {
+          self.searchProduct();
+        }, 100);
+      },
+      
+      // 숫자 추가
+      addDigit: function(digit) {
+        if (this.barcode.length < 50) {
+          this.barcode += digit;
+          this.barcodeDisplay.value = this.barcode;
+        }
+      },
+      
+      // 한 자리 삭제
+      deleteDigit: function() {
+        this.barcode = this.barcode.slice(0, -1);
+        this.barcodeDisplay.value = this.barcode;
+      },
+      
+      // 바코드 초기화
+      clearBarcode: function() {
+        this.barcode = '';
+        this.barcodeDisplay.value = '';
+        this.barcodeDisplay.focus();
+      },
+      
+      // 제품 검색
+      searchProduct: function() {
+        if (this.processing) return;
+        
+        if (!this.barcode || this.barcode.trim() === '') {
+          this.showAlert('❌ 검색어를 입력해주세요.');
+          return;
+        }
+        
+        console.log('제품 검색:', this.barcode);
+        
+        this.processing = true;
+        this.showSection('loading');
+        
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function(result) {
+            self.handleSearchSuccess(result);
+          })
+          .withFailureHandler(function(error) {
+            self.handleSearchError(error);
+          })
+          .searchProduct(this.barcode);
+      },
+      
+      // 검색 성공
+      handleSearchSuccess: function(result) {
+        this.processing = false;
+        
+        if (!result.success) {
+          this.showAlert(result.error);
+          this.showSection('input');
+          this.clearBarcode();
+          return;
+        }
+        
+        console.log('검색 성공:', result.products.length, '개 (' + result.company + ')');
+        
+        this.products = result.products || [];
+        this.currentCompany = result.company;  // OUTRE 또는 SNG
+        
+        // 테마 적용
+        this.applyTheme(this.currentCompany);
+        
+        this.displayProducts();
+        this.showSection('results');
+        
+        // 첫 번째 제품 자동 선택
+        if (this.products.length > 0) {
+          var self = this;
+          setTimeout(function() {
+            self.selectRow(0);
+            self.scrollToRow(0);
+          }, 100);
+        }
+      },
+      
+      // 검색 실패
+      handleSearchError: function(error) {
+        this.processing = false;
+        this.showSection('input');
+        this.showAlert('❌ 검색 중 오류가 발생했습니다.');
+        console.error('검색 오류:', error);
+        this.clearBarcode();
+      },
+      
+      // 테마 적용
+      applyTheme: function(company) {
+        var theme = company === 'OUTRE' ? 'theme-outre' : 'theme-sng';
+        
+        // body 테마
+        document.body.className = theme;
+        
+        // 헤더 테마
+        var header = document.querySelector('.header');
+        header.className = 'header ' + theme;
+        
+        // 바코드 입력 테마
+        this.barcodeDisplay.className = theme;
+        
+        // 카메라 버튼 테마
+        var cameraBtn = document.querySelector('.camera-btn');
+        cameraBtn.className = 'camera-btn ' + theme;
+        
+        // 키패드 버튼 테마
+        var keyBtns = document.querySelectorAll('.key-btn:not(.delete)');
+        for (var i = 0; i < keyBtns.length; i++) {
+          keyBtns[i].className = 'key-btn ' + theme;
+        }
+        
+        // 로딩 스피너 테마
+        var spinner = document.querySelector('.spinner');
+        spinner.className = 'spinner ' + theme;
+        
+        var loadingText = document.querySelector('.loading-text');
+        loadingText.className = 'loading-text ' + theme;
+        
+        // 수량 버튼 테마
+        var qtyBtns = document.querySelectorAll('.qty-btn:not(.clear)');
+        for (var i = 0; i < qtyBtns.length; i++) {
+          qtyBtns[i].className = 'qty-btn ' + theme;
+        }
+        
+        // 테이블 테마
+        var productsTable = document.querySelector('.products-table');
+        productsTable.className = 'products-table ' + theme;
+        
+        // 상단 액션 버튼 테마 (추가 버튼만)
+        var addBtnTop = document.querySelector('.action-btn-top.add');
+        if (addBtnTop) {
+          addBtnTop.className = 'action-btn-top add ' + theme;
+        }
+        
+        // 카메라 헤더 테마
+        var cameraHeader = document.querySelector('.camera-header');
+        cameraHeader.className = 'camera-header ' + theme;
+      },
+      
+      // 제품 표시
+      displayProducts: function() {
+        this.productsTableBody.innerHTML = '';
+        
+        var theme = this.currentCompany === 'OUTRE' ? 'theme-outre' : 'theme-sng';
+        
+        for (var i = 0; i < this.products.length; i++) {
+          var product = this.products[i];
+          var row = this.productsTableBody.insertRow();
+          row.dataset.index = i;
+          
+          var self = this;
+          row.onclick = (function(index) {
+            return function() {
+              self.selectRow(index);
+            };
+          })(i);
+          
+          // 수량 (첫 번째 컬럼)
+          var qtyCell = row.insertCell(0);
+          var qtyInput = document.createElement('input');
+          qtyInput.type = 'number';
+          qtyInput.className = 'quantity-input ' + theme;
+          qtyInput.value = product.quantity || 0;
+          qtyInput.min = 0;
+          qtyInput.inputMode = 'numeric';
+          
+          qtyInput.onfocus = function() {
+            this.blur();
+          };
+          
+          qtyInput.onclick = (function(index, input) {
+            return function(e) {
+              e.stopPropagation();
+              input.blur();
+              self.selectRow(index);
+            };
+          })(i, qtyInput);
+          
+          qtyInput.oninput = (function(index, input) {
+            return function() {
+              var val = parseInt(input.value) || 0;
+              self.products[index].quantity = Math.max(0, val);
+              input.value = self.products[index].quantity;
+            };
+          })(i, qtyInput);
+          
+          qtyCell.appendChild(qtyInput);
+          
+          // ITEM NAME (두 번째 컬럼)
+          var nameCell = row.insertCell(1);
+          nameCell.textContent = product.itemName || '';
+          nameCell.style.fontWeight = '600';
+          
+          // COLOR (세 번째 컬럼)
+          var colorCell = row.insertCell(2);
+          colorCell.textContent = product.color || '';
+          
+          // 회사 뱃지 (네 번째 컬럼)
+          var companyCell = row.insertCell(3);
+          var badge = document.createElement('span');
+          badge.className = 'company-badge ' + (product.company === 'OUTRE' ? 'outre' : 'sng');
+          badge.textContent = product.company;
+          companyCell.appendChild(badge);
+        }
+      },
+      
+      // 주문 페이지로 이동
+      gotoOrderPage: function(company) {
+        console.log('주문 페이지 이동:', company);
+        this.viewingCompany = company;
+        this.showOrderComplete();
+      },
+      
+      // 행 선택
+      selectRow: function(index) {
+        if (index < 0 || index >= this.products.length) return;
+        
+        var rows = this.productsTableBody.rows;
+        for (var i = 0; i < rows.length; i++) {
+          rows[i].classList.remove('selected');
+        }
+        
+        rows[index].classList.add('selected');
+        this.selectedRow = index;
+      },
+      
+      // 특정 행으로 스크롤
+      scrollToRow: function(index) {
+        if (index < 0 || index >= this.products.length) return;
+        
+        var rows = this.productsTableBody.rows;
+        if (!rows[index]) return;
+        
+        var targetRow = rows[index];
+        var tableContainer = document.querySelector('.table-container');
+        
+        if (!tableContainer) return;
+        
+        // 테이블 컨테이너 내에서 행의 상대적 위치 계산
+        var containerRect = tableContainer.getBoundingClientRect();
+        var rowRect = targetRow.getBoundingClientRect();
+        
+        // 행이 컨테이너의 중앙에 오도록 스크롤
+        var scrollOffset = (rowRect.top - containerRect.top) + tableContainer.scrollTop - (containerRect.height / 2) + (rowRect.height / 2);
+        
+        // 부드러운 스크롤
+        tableContainer.scrollTo({
+          top: scrollOffset,
+          behavior: 'smooth'
+        });
+        
+        console.log('행으로 스크롤: index=' + index);
+      },
+      
+      // 수량 조절
+      adjustQuantity: function(amount) {
+        if (this.selectedRow === -1) return;
+        
+        this.products[this.selectedRow].quantity = Math.max(0, 
+          (this.products[this.selectedRow].quantity || 0) + amount);
+        
+        this.displayProducts();
+        this.selectRow(this.selectedRow);
+      },
+      
+      // 수량 초기화
+      clearQuantity: function() {
+        if (this.selectedRow === -1) return;
+        
+        this.products[this.selectedRow].quantity = 0;
+        this.displayProducts();
+        this.selectRow(this.selectedRow);
+      },
+      
+      // 주문에 추가
+      addToOrder: function() {
+        var hasQty = false;
+        for (var i = 0; i < this.products.length; i++) {
+          if ((this.products[i].quantity || 0) > 0) {
+            hasQty = true;
+            break;
+          }
+        }
+        
+        if (!hasQty) {
+          this.showAlert('⚠️ 수량이 입력된 제품이 없습니다.');
+          return;
+        }
+        
+        if (this.processing) return;
+        
+        console.log('주문 추가 시작 (' + this.currentCompany + ')');
+        
+        this.processing = true;
+        this.showSection('loading');
+        
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function(result) {
+            self.handleAddSuccess(result);
+          })
+          .withFailureHandler(function(error) {
+            self.handleAddError(error);
+          })
+          .addToOrder(this.products, this.currentCompany);
+      },
+      
+      // 저장 후 카메라 열기
+      saveAndOpenCamera: function() {
+        var hasQty = false;
+        for (var i = 0; i < this.products.length; i++) {
+          if ((this.products[i].quantity || 0) > 0) {
+            hasQty = true;
+            break;
+          }
+        }
+        
+        if (!hasQty) {
+          // 수량 없으면 그냥 카메라만 열기
+          this.reset();
+          this.openCamera();
+          return;
+        }
+        
+        if (this.processing) return;
+        
+        console.log('저장 후 카메라 열기 (' + this.currentCompany + ')');
+        
+        this.processing = true;
+        this.showSection('loading');
+        
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function(result) {
+            self.handleSaveAndCameraSuccess(result);
+          })
+          .withFailureHandler(function(error) {
+            self.handleAddError(error);
+          })
+          .addToOrder(this.products, this.currentCompany);
+      },
+      
+      // 저장 후 돌아가기
+      saveAndGoBack: function() {
+        var hasQty = false;
+        for (var i = 0; i < this.products.length; i++) {
+          if ((this.products[i].quantity || 0) > 0) {
+            hasQty = true;
+            break;
+          }
+        }
+        
+        if (!hasQty) {
+          // 수량 없으면 그냥 돌아가기
+          this.reset();
+          return;
+        }
+        
+        if (this.processing) return;
+        
+        console.log('저장 후 돌아가기 (' + this.currentCompany + ')');
+        
+        this.processing = true;
+        this.showSection('loading');
+        
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function(result) {
+            self.handleSaveAndBackSuccess(result);
+          })
+          .withFailureHandler(function(error) {
+            self.handleAddError(error);
+          })
+          .addToOrder(this.products, this.currentCompany);
+      },
+      
+      // 추가 성공
+      handleAddSuccess: function(result) {
+        this.processing = false;
+        
+        if (result.success) {
+          this.showAlert(result.message, 2000);
+          this.reset();
+        } else {
+          this.showAlert(result.error);
+          this.showSection('results');
+        }
+      },
+      
+      // 저장 후 카메라 성공
+      handleSaveAndCameraSuccess: function(result) {
+        this.processing = false;
+        
+        if (result.success) {
+          // 알림 없이 바로 리셋하고 카메라 열기
+          this.reset();
+          var self = this;
+          setTimeout(function() {
+            self.openCamera();
+          }, 100);
+        } else {
+          this.showAlert(result.error);
+          this.showSection('results');
+        }
+      },
+      
+      // 저장 후 돌아가기 성공
+      handleSaveAndBackSuccess: function(result) {
+        this.processing = false;
+        
+        if (result.success) {
+          // 알림 없이 바로 리셋
+          this.reset();
+        } else {
+          this.showAlert(result.error);
+          this.showSection('results');
+        }
+      },
+      
+      // 추가 실패
+      handleAddError: function(error) {
+        this.processing = false;
+        this.showSection('results');
+        this.showAlert('❌ 주문 추가 중 오류가 발생했습니다.');
+        console.error('추가 오류:', error);
+      },
+      
+      // 취소
+      cancel: function() {
+        this.reset();
+      },
+      
+      // 리셋
+      reset: function() {
+        this.barcode = '';
+        this.products = [];
+        this.selectedRow = -1;
+        this.processing = false;
+        this.currentCompany = null;
+        this.barcodeDisplay.value = '';
+        
+        // 초기 테마로 복귀
+        this.applyTheme(null);
+        
+        this.showSection('input');
+      },
+      
+      // 섹션 표시
+      showSection: function(section) {
+        var header = document.querySelector('.header');
+        
+        this.inputSection.style.display = section === 'input' ? 'block' : 'none';
+        this.resultsSection.style.display = section === 'results' ? 'block' : 'none';
+        this.loading.style.display = section === 'loading' ? 'block' : 'none';
+        
+        // 수량 입력 화면에서는 헤더 숨김
+        if (section === 'results') {
+          header.style.display = 'none';
+        } else {
+          header.style.display = 'block';
+        }
+      },
+      
+      // 알림 표시
+      showAlert: function(message, duration) {
+        var self = this;
+        this.alertMessage.textContent = message;
+        this.alertMessage.className = 'show';
+        
+        setTimeout(function() {
+          self.alertMessage.className = '';
+        }, duration || 3000);
+      },
+      
+      // ===== 카메라 기능 (ZXing - 강력한 모바일 지원) =====
+      
+      codeReader: null,
+      videoElement: null,
+      canvasElement: null,
+      
+      openCamera: function() {
+        console.log('카메라 열기');
+        this.cameraModal.classList.add('active');
+        this.startCamera();
+      },
+      
+      startCamera: function() {
+        var self = this;
+        
+        // ZXing 초기화
+        this.codeReader = new ZXing.BrowserMultiFormatReader();
+        this.videoElement = document.getElementById('video');
+        this.canvasElement = document.getElementById('canvas');
+        
+        console.log('ZXing 카메라 시작...');
+        
+        // 후면 카메라 선택
+        this.codeReader.listVideoInputDevices()
+          .then(function(videoInputDevices) {
+            console.log('감지된 카메라:', videoInputDevices.length + '개');
+            
+            // 후면 카메라 찾기
+            var selectedDeviceId = videoInputDevices[0].deviceId;
+            
+            for (var i = 0; i < videoInputDevices.length; i++) {
+              var device = videoInputDevices[i];
+              var label = device.label.toLowerCase();
+              
+              // 후면 카메라 키워드
+              if (label.indexOf('back') > -1 || 
+                  label.indexOf('rear') > -1 || 
+                  label.indexOf('환경') > -1 ||
+                  label.indexOf('후면') > -1) {
+                selectedDeviceId = device.deviceId;
+                console.log('후면 카메라 선택:', device.label);
+                break;
+              }
+            }
+            
+            // 연속 스캔 시작
+            self.codeReader.decodeFromVideoDevice(selectedDeviceId, self.videoElement, function(result, err) {
+              if (result) {
+                var code = result.text;
+                console.log('바코드 감지:', code);
+                
+                // 12자리 숫자 검증
+                if (code && code.length === 12 && /^\d{12}$/.test(code)) {
+                  console.log('✅ 유효한 바코드:', code);
+                  
+                  // 진동
+                  if (navigator.vibrate) {
+                    navigator.vibrate([100, 50, 100]);
+                  }
+                  
+                  // 카메라 중지 및 검색
+                  self.closeCamera();
+                  self.barcode = code;
+                  self.barcodeDisplay.value = code;
+                  
+                  setTimeout(function() {
+                    self.searchProduct();
+                  }, 300);
+                } else {
+                  console.log('❌ 무효한 바코드 (12자리 아님):', code);
+                }
+              }
+              
+              if (err && err.name !== 'NotFoundException') {
+                console.log('스캔 오류:', err);
+              }
+            });
+            
+            self.cameraActive = true;
+            console.log('카메라 시작 성공');
+          })
+          .catch(function(err) {
+            console.error('카메라 접근 오류:', err);
+            self.showAlert('❌ 카메라를 시작할 수 없습니다.\n\n카메라 권한을 확인해주세요.');
+            self.closeCamera();
+          });
+      },
+      
+      closeCamera: function() {
+        console.log('카메라 닫기');
+        
+        try {
+          // ZXing 카메라 중지
+          if (this.codeReader) {
+            this.codeReader.reset();
+            this.codeReader = null;
+          }
+          
+          // 비디오 스트림 중지
+          if (this.videoElement && this.videoElement.srcObject) {
+            var tracks = this.videoElement.srcObject.getTracks();
+            for (var i = 0; i < tracks.length; i++) {
+              tracks[i].stop();
+            }
+            this.videoElement.srcObject = null;
+          }
+        } catch (e) {
+          console.log('카메라 중지 오류:', e);
+        }
+        
+        this.cameraModal.classList.remove('active');
+        this.cameraActive = false;
+      },
+      
+      // ===== ORDER COMPLETE 기능 =====
+      
+      showOrderComplete: function() {
+        console.log('ORDER COMPLETE 열기');
+        this.loadOrderData(this.viewingCompany);
+        this.orderModal.classList.add('active');
+      },
+      
+      // 회사 전환
+      switchCompany: function(company) {
+        this.viewingCompany = company;
+        
+        // 탭 활성화 상태 변경
+        var tabs = document.querySelectorAll('.company-tab');
+        for (var i = 0; i < tabs.length; i++) {
+          tabs[i].classList.remove('active');
+        }
+        
+        var activeTab = company === 'SNG' ? 
+          document.querySelector('.company-tab.tab-sng') : 
+          document.querySelector('.company-tab.tab-outre');
+        activeTab.classList.add('active');
+        
+        // 해당 회사 데이터 로드
+        this.loadOrderData(company);
+      },
+      
+      // 주문 데이터 로드
+      loadOrderData: function(company) {
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function(result) {
+            self.displayOrderData(result, company);
+          })
+          .withFailureHandler(function(error) {
+            self.showAlert('❌ 주문 데이터 조회 실패');
+            console.error('조회 오류:', error);
+          })
+          .getOrderData(company);
+      },
+      
+      displayOrderData: function(result, company) {
+        if (!result.success) {
+          this.showAlert(result.error);
+          return;
+        }
+        
+        this.orderData[company] = result.data || [];
+        
+        if (this.orderData[company].length === 0) {
+          this.orderModalBody.innerHTML = '<div class="empty-message">주문 내역이 없습니다.</div>';
+        } else {
+          var html = '<div class="order-table-container"><table class="order-table">';
+          
+          for (var i = 0; i < this.orderData[company].length; i++) {
+            var row = this.orderData[company][i];
+            html += '<tr>';
+            
+            for (var j = 0; j < row.length; j++) {
+              var tag = i === 0 ? 'th' : 'td';
+              html += '<' + tag + '>' + (row[j] || '') + '</' + tag + '>';
+            }
+            
+            html += '</tr>';
+          }
+          
+          html += '</table></div>';
+          this.orderModalBody.innerHTML = html;
+        }
+      },
+      
+      copyOrderData: function() {
+        var data = this.orderData[this.viewingCompany];
+        
+        if (!data || data.length === 0) {
+          this.showAlert('복사할 데이터가 없습니다.');
+          return;
+        }
+        
+        var text = '';
+        for (var i = 0; i < data.length; i++) {
+          text += data[i].join('\t') + '\n';
+        }
+        
+        var self = this;
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function() {
+            self.showAlert('✅ 복사되었습니다!', 2000);
+          }).catch(function(err) {
+            console.error('복사 실패:', err);
+            self.fallbackCopy(text);
+          });
+        } else {
+          this.fallbackCopy(text);
+        }
+      },
+      
+      fallbackCopy: function(text) {
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        
+        try {
+          document.execCommand('copy');
+          this.showAlert('✅ 복사되었습니다!', 2000);
+        } catch (err) {
+          console.error('복사 실패:', err);
+          this.showAlert('❌ 복사에 실패했습니다.');
+        }
+        
+        document.body.removeChild(textarea);
+      },
+      
+      clearOrderList: function() {
+        var companyName = this.viewingCompany === 'SNG' ? 'SNG' : 'OUTRE';
+        
+        if (!confirm(companyName + ' 주문 내역을 백업하고 비우시겠습니까?\n\n백업은 날짜_시간 이름의 숨김 탭에 저장됩니다.')) {
+          return;
+        }
+        
+        console.log('리스트 비우기: ' + this.viewingCompany);
+        
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function(result) {
+            if (result.success) {
+              self.showAlert(result.message);
+              self.loadOrderData(self.viewingCompany);
+            } else {
+              self.showAlert(result.error);
+            }
+          })
+          .withFailureHandler(function(error) {
+            self.showAlert('❌ 리스트 비우기 실패');
+            console.error('비우기 오류:', error);
+          })
+          .clearOrderList(this.viewingCompany);
+      },
+      
+      closeOrderModal: function() {
+        this.orderModal.classList.remove('active');
+      }
+    };
+    
+    // 앱 시작
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        app.init();
+      });
+    } else {
+      app.init();
+    }
+  </script>
+</body>
+</html>
