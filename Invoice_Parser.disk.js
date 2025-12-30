@@ -560,18 +560,16 @@ function clearParsingSheet() {
 }
 
 /**
- * PARSING 시트에 저장 (배치 쓰기로 성능 개선)
+ * PARSING 시트에 저장
  */
 function saveToParsingSheet(data) {
   try {
     var sheet = getSheet(CONFIG.INVOICE.PARSING_SHEET);
-
-    // CRITICAL: 배치 쓰기를 위해 모든 행을 배열로 준비
-    var rows = [];
-
+    var savedCount = 0;
+    
     for (var i = 0; i < data.lineItems.length; i++) {
       var item = data.lineItems[i];
-
+      
       var row = [
         data.vendor,
         data.invoiceNo,
@@ -594,21 +592,15 @@ function saveToParsingSheet(data) {
         item.extPrice,
         item.memo
       ];
-
-      rows.push(row);
+      
+      sheet.appendRow(row);
+      savedCount++;
     }
-
-    // CRITICAL: setValues로 한 번에 쓰기 (appendRow보다 100배 이상 빠름)
-    if (rows.length > 0) {
-      var lastRow = sheet.getLastRow();
-      var targetRange = sheet.getRange(lastRow + 1, 1, rows.length, rows[0].length);
-      targetRange.setValues(rows);
-    }
-
-    debugLog('PARSING 시트 저장 완료 (배치)', { savedCount: rows.length });
-
-    return rows.length;
-
+    
+    debugLog('PARSING 시트 저장 완료', { savedCount: savedCount });
+    
+    return savedCount;
+    
   } catch (error) {
     debugLog('saveToParsingSheet 오류', { error: error.toString() });
     throw error;
@@ -1086,29 +1078,9 @@ function parseHeaderInfo(lines, data) {
 }
 
 /**
- * 라인 아이템 파싱 라우터 (SNG/OUTRE 분기)
- * - SNG → Invoice_Parser_SNG.js의 parseSNGLineItems()
- * - OUTRE → Invoice_Parser_OUTRE.js의 parseOUTRELineItems()
+ * 라인 아이템 파싱 (SNG/OUTRE 통합, 개선 버전)
  */
 function parseLineItems(lines, vendor) {
-  debugLog('라인 아이템 파싱 시작 (라우터)', { vendor: vendor, totalLines: lines.length });
-
-  if (vendor === 'SNG') {
-    return parseSNGLineItems(lines);
-  } else if (vendor === 'OUTRE') {
-    return parseOUTRELineItems(lines);
-  } else {
-    debugLog('알 수 없는 vendor', { vendor: vendor });
-    return [];
-  }
-}
-
-/**
- * 라인 아이템 파싱 (레거시 참조용 - 사용 안 함)
- * CRITICAL: 이 함수는 더 이상 사용되지 않습니다.
- * 새로운 파싱 로직은 Invoice_Parser_SNG.js와 Invoice_Parser_OUTRE.js를 참조하세요.
- */
-function parseLineItems_OLD_REFERENCE(lines, vendor) {
   var items = [];
   var lineNo = 1;
 
@@ -2310,14 +2282,15 @@ function parseLineItems_OLD_REFERENCE(lines, vendor) {
 }
 
 /**
- * OUTRE 컬러 라인 파싱 (레거시 참조용 - 사용 안 함)
- * CRITICAL: 이 함수는 더 이상 사용되지 않습니다.
- * 새로운 파싱 로직은 Invoice_Parser_OUTRE.js의 parseOUTREColorLines()를 참조하세요.
+ * OUTRE 컬러 라인 파싱
+ * CRITICAL: OUTRE 전용 함수 - SNG와 완전 분리됨
+ * OUTRE 파싱 로직이 완벽하게 작동하므로 이 함수는 절대 수정 금지!
+ * SNG 수정이 필요하면 parseSNGColorLines 함수를 수정할 것
  *
  * @param {Array} colorLines - 컬러 라인 배열
  * @param {string} description - Description 텍스트 (제외용)
  */
-function parseOUTREColorLines_OLD_REFERENCE(colorLines, description) {
+function parseOUTREColorLines(colorLines, description) {
   var colorData = [];
 
   var fullText = colorLines.join(' ');
@@ -2415,14 +2388,15 @@ function parseOUTREColorLines_OLD_REFERENCE(colorLines, description) {
 }
 
 /**
- * SNG 컬러 라인 파싱 (레거시 참조용 - 사용 안 함)
- * CRITICAL: 이 함수는 더 이상 사용되지 않습니다.
- * 새로운 파싱 로직은 Invoice_Parser_SNG.js의 parseSNGColorLines()를 참조하세요.
+ * SNG 컬러 라인 파싱
+ * CRITICAL: SNG 전용 함수 - OUTRE와 완전 분리됨
+ * SNG 파싱 로직 수정 시 이 함수만 수정하면 OUTRE에 영향 없음
+ * 현재는 OUTRE 로직과 동일하지만, 향후 SNG 특수 로직 추가 가능
  *
  * @param {Array} colorLines - 컬러 라인 배열
  * @param {string} description - Description 텍스트 (제외용)
  */
-function parseSNGColorLines_OLD_REFERENCE(colorLines, description) {
+function parseSNGColorLines(colorLines, description) {
   var colorData = [];
 
   var fullText = colorLines.join(' ');

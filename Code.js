@@ -151,6 +151,8 @@ function initializeInvoiceSheets() {
     var results = [];
     
     var sheets = [
+      CONFIG.INVOICE.PARSING_SHEETS.SNG,
+      CONFIG.INVOICE.PARSING_SHEETS.OUTRE,
       CONFIG.INVOICE.PARSING_SHEET,
       CONFIG.INVOICE.SNG_SHEET,
       CONFIG.INVOICE.OUTRE_SHEET
@@ -168,7 +170,9 @@ function initializeInvoiceSheets() {
         
         var headerRange = sheet.getRange(1, 1, 1, CONFIG.INVOICE.HEADERS.length);
         
-        if (sheetName === CONFIG.INVOICE.PARSING_SHEET) {
+        if (sheetName === CONFIG.INVOICE.PARSING_SHEET ||
+            sheetName === CONFIG.INVOICE.PARSING_SHEETS.SNG ||
+            sheetName === CONFIG.INVOICE.PARSING_SHEETS.OUTRE) {
           headerRange.setBackground('#9370DB');
         } else if (sheetName.indexOf('SNG') > -1) {
           headerRange.setBackground('#4169E1');

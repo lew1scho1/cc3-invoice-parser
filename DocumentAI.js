@@ -530,16 +530,16 @@ function debugDocumentAIResponse() {
 
     // PARSING 탭에서 파일명 가져오기
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var parsingSheet = ss.getSheetByName(CONFIG.INVOICE.PARSING_SHEET);
-
-    if (!parsingSheet) {
-      Logger.log('❌ PARSING 시트를 찾을 수 없습니다.');
+    var parsingSheetName = resolveParsingSheetNameForConfirm();
+    if (!parsingSheetName) {
+      Logger.log('❌ PARSING_SNG 또는 PARSING_OUTRE 시트를 선택해주세요.');
       return;
     }
+    var parsingSheet = ss.getSheetByName(parsingSheetName);
 
     var data = parsingSheet.getDataRange().getValues();
     if (data.length <= 1) {
-      Logger.log('❌ PARSING 탭에 데이터가 없습니다. 먼저 파싱을 실행하세요.');
+      Logger.log('❌ ' + parsingSheetName + ' 탭에 데이터가 없습니다. 먼저 파싱을 실행하세요.');
       return;
     }
 

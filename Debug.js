@@ -198,13 +198,14 @@ function collectDebugLog(message, data) {
   var logEntry = {
     timestamp: timestamp,
     message: message,
-    data: data ? JSON.stringify(data) : ''
+    data: data !== undefined ? JSON.stringify(data) : ''
   };
   DEBUG_LOGS.push(logEntry);
 }
 
 /**
- * 디버그 로그를 DEBUG_OUTPUT 시트에 출력
+ * 디버그 로그를 DEBUG_OUTPUT 시트에 출력 (배치 쓰기)
+ * CRITICAL: appendRow() 대신 setValues()로 한 번에 쓰기 (100배 이상 빠름)
  */
 function outputDebugLogsToSheet() {
   try {
@@ -230,10 +231,17 @@ function outputDebugLogsToSheet() {
       }
     }
 
-    // 로그 출력
-    for (var i = 0; i < DEBUG_LOGS.length; i++) {
-      var log = DEBUG_LOGS[i];
-      debugSheet.appendRow([log.timestamp, log.message, log.data]);
+    // CRITICAL: 배치 쓰기로 로그 출력 (100배 이상 빠름)
+    if (DEBUG_LOGS.length > 0) {
+      var rows = [];
+      for (var i = 0; i < DEBUG_LOGS.length; i++) {
+        var log = DEBUG_LOGS[i];
+        rows.push([log.timestamp, log.message, log.data]);
+      }
+
+      // 한 번에 쓰기 (Single API call)
+      var targetRange = debugSheet.getRange(2, 1, rows.length, 3);
+      targetRange.setValues(rows);
     }
 
     // 컬럼 너비 자동 조정

@@ -43,7 +43,11 @@ var CONFIG = {
 
 CONFIG.INVOICE = {
   // 시트 이름
-  PARSING_SHEET: 'PARSING',      // 임시 파싱 결과
+  PARSING_SHEET: 'PARSING',      // 임시 파싱 결과 (레거시)
+  PARSING_SHEETS: {
+    SNG: 'PARSING_SNG',
+    OUTRE: 'PARSING_OUTRE'
+  },
   SNG_SHEET: 'INVOICE_SNG',      // 확정된 SNG 인보이스 (누적)
   OUTRE_SHEET: 'INVOICE_OUTRE',  // 확정된 OUTRE 인보이스 (누적)
   
