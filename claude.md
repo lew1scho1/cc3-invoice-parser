@@ -41,7 +41,7 @@ Google Apps Script 기반의 인보이스 파싱 시스템으로, SNG와 OUTRE �
 
 ### 유틸리티 파일
 - **Search.js**: 데이터베이스 검색 로직
-- **Utils.js**: 공통 유틸리티 함수
+- **Utilss.js**: 공통 유틸리티 함수
 - **Error_Log.js**: 에러 로깅
 - **Debug.js**: 디버그 로깅
 - **Order.js**: 주문 처리 관련

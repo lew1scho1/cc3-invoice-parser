@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>CC3 HAIR ORDER APP</title>
+  <title>CC HAIR ORDER APP v2</title>
   
   <!-- ZXing 바코드 스캔 라이브러리 (더 강력하고 모바일 최적화) -->
   <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
@@ -20,28 +20,29 @@
     
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-      background: linear-gradient(135deg, #FFE4B5 0%, #FFB6C1 100%);
+      background: linear-gradient(135deg, #FFF5E1 0%, #FFE5EC 100%);
       min-height: 100vh;
       padding: 10px;
       transition: background 0.3s ease;
       overflow-x: hidden;
     }
-    
-    /* 회사별 배경 테마 */
+
+    /* 회사별 배경 테마 - 톤다운 */
     body.theme-outre {
-      background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
+      background: linear-gradient(135deg, #FFA07A 0%, #FFB366 100%);
     }
-    
+
     body.theme-sng {
-      background: linear-gradient(135deg, #4169E1 0%, #9370DB 100%);
+      background: linear-gradient(135deg, #6A8FE8 0%, #A799DB 100%);
     }
     
     .container {
       max-width: 1200px;
+      width: 100%;
       margin: 0 auto;
       background: white;
       border-radius: 20px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -50,21 +51,21 @@
     
     /* ===== 헤더 ===== */
     .header {
-      background: linear-gradient(135deg, #FFE4B5 0%, #FFB6C1 100%);
-      color: white;
+      background: linear-gradient(135deg, #FFF5E1 0%, #FFE5EC 100%);
+      color: #000;
       padding: 20px;
       text-align: center;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
       position: relative;
       transition: background 0.3s ease;
     }
-    
+
     .header.theme-outre {
-      background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
+      background: linear-gradient(135deg, #FFA07A 0%, #FFB366 100%);
     }
-    
+
     .header.theme-sng {
-      background: linear-gradient(135deg, #4169E1 0%, #9370DB 100%);
+      background: linear-gradient(135deg, #6A8FE8 0%, #A799DB 100%);
     }
     
     .header h1 {
@@ -112,27 +113,64 @@
       font-weight: 600;
       color: #333;
       margin-bottom: 15px;
+      transition: opacity 0.3s ease;
     }
-    
+
+    .input-label.hidden {
+      opacity: 0;
+      height: 0;
+      margin: 0;
+      overflow: hidden;
+    }
+
     .barcode-container {
       display: flex;
       gap: 10px;
       margin-bottom: 15px;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+
+    .barcode-input-row {
+      display: flex;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .barcode-buttons-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .barcode-buttons-row .camera-btn,
+    .barcode-buttons-row .keyboard-btn,
+    .barcode-buttons-row .search-btn {
+      flex: 1 1 0;
+      min-width: max-content;
+      padding: 0 12px;
+      text-align: center;
+    }
+
+    .barcode-buttons-row .search-btn {
+      width: auto;
+      margin-bottom: 0;
     }
     
     #barcodeDisplay {
       flex: 1;
       height: 60px;
-      font-size: 32px;
+      font-size: 24px;
       font-weight: 700;
       text-align: center;
       border: 3px solid #FFB6C1;
       border-radius: 12px;
       padding: 10px;
-      letter-spacing: 3px;
+      letter-spacing: 2px;
       background: #FFF8F0;
       color: #333;
       outline: none;
+      min-width: 0;
       transition: border-color 0.3s;
     }
     
@@ -195,17 +233,20 @@
     }
 
     .search-btn {
-      width: 100%;
-      height: 52px;
+      width: auto;
+      height: 60px;
       border: none;
       border-radius: 12px;
       background: linear-gradient(135deg, #2D9CDB 0%, #1C7ED6 100%);
       color: white;
-      font-size: 18px;
+      font-size: 15px;
       font-weight: 700;
       cursor: pointer;
       box-shadow: 0 4px 6px rgba(0,0,0,0.12);
-      margin-bottom: 15px;
+      padding: 0 16px;
+      min-width: 72px;
+      white-space: nowrap;
+      flex: 0 0 auto;
     }
 
     .search-btn:active {
@@ -279,15 +320,22 @@
 
     .quick-item {
       padding: 8px 12px;
-      background: #f5f5f5;
+      background: #ffffff;
       border-radius: 10px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      border: 1px solid #e0e0e0;
+      border: 1px solid #E5E5EA;
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      transition: all 0.2s;
+    }
+
+    .quick-item:hover {
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      transform: translateY(-1px);
     }
 
     .quick-item .company-pill {
@@ -295,15 +343,18 @@
       border-radius: 6px;
       font-size: 10px;
       font-weight: 700;
-      color: white;
     }
 
     .company-pill.outre {
-      background: #FF8C00;
+      background: rgba(255, 140, 0, 0.12);
+      color: #FF8C00;
+      border: 1px solid rgba(255, 140, 0, 0.3);
     }
 
     .company-pill.sng {
-      background: #4169E1;
+      background: rgba(65, 105, 225, 0.12);
+      color: #4169E1;
+      border: 1px solid rgba(65, 105, 225, 0.3);
     }
 
     .quick-empty {
@@ -355,15 +406,50 @@
       align-items: center;
       justify-content: center;
     }
-    
+
     #video {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
-    
+
     #canvas {
       display: none;
+    }
+
+    /* 스캔 가이드 박스 */
+    .scan-guide {
+      position: absolute;
+      width: 80%;
+      max-width: 300px;
+      height: 150px;
+      border: 3px solid #00FF00;
+      border-radius: 12px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { border-color: #00FF00; }
+      50% { border-color: #00CC00; }
+    }
+
+    /* 스캔 안내 텍스트 */
+    .scan-tip {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      pointer-events: none;
+      max-width: 90%;
     }
     
     .camera-footer {
@@ -534,13 +620,13 @@
       padding: 12px 14px;
       background: #ffffff;
       border-radius: 12px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid #E5E5EA;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
       cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
 
     .keyword-desc {
@@ -606,56 +692,90 @@
       flex-shrink: 0;
     }
     
-    /* 상단 액션 버튼 (4개 나란히) */
+    /* 상단 액션 버튼 (4개 나란히) - 재구성 */
     .action-buttons-top {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: 2fr 1.5fr 1.5fr 1fr;
       gap: 8px;
       margin-bottom: 15px;
     }
-    
+
     .action-btn-top {
       height: 55px;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       border: none;
       border-radius: 12px;
       cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
       user-select: none;
-      transition: background 0.3s, transform 0.2s;
+      transition: all 0.2s;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       color: white;
+      padding: 6px;
+      line-height: 1.2;
     }
-    
-    .action-btn-top.add {
-      background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
-    }
-    
-    .action-btn-top.add.theme-outre {
-      background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
-    }
-    
-    .action-btn-top.add.theme-sng {
-      background: linear-gradient(135deg, #9370DB 0%, #8A2BE2 100%);
-    }
-    
+
+    /* Primary: 저장 후 카메라 (가장 큰/강조) */
     .action-btn-top.save-camera {
-      background: linear-gradient(135deg, #4169E1 0%, #6495ED 100%);
+      background: linear-gradient(135deg, #7DB6E8 0%, #5FA4DB 100%);
+      font-size: 18px;
     }
-    
+
+    .action-btn-top.save-camera .btn-icon {
+      font-size: 22px;
+      margin-bottom: 2px;
+    }
+
+    .action-btn-top.save-camera .btn-label {
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* Secondary: 저장 후 검색창 */
     .action-btn-top.save-back {
-      background: linear-gradient(135deg, #808080 0%, #696969 100%);
+      background: linear-gradient(135deg, #B3B3B8 0%, #909096 100%);
+      font-size: 16px;
     }
-    
+
+    .action-btn-top.save-back .btn-icon {
+      font-size: 20px;
+      margin-bottom: 2px;
+    }
+
+    .action-btn-top.save-back .btn-label {
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    /* Tertiary: 검색창으로 돌아가기 (저장 없이) */
+    .action-btn-top.cancel {
+      background: linear-gradient(135deg, #C4C4C4 0%, #A6A6A6 100%);
+      font-size: 16px;
+    }
+
+    .action-btn-top.cancel .btn-icon {
+      font-size: 20px;
+      margin-bottom: 2px;
+    }
+
+    .action-btn-top.cancel .btn-label {
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    /* Cart: 장바구니 */
     .action-btn-top.cart {
-      background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
+      background: linear-gradient(135deg, #FFB07A 0%, #FF9A66 100%);
+      font-size: 20px;
     }
-    
+
     .action-btn-top:active {
       transform: scale(0.98);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
     }
     
     .results-header {
@@ -669,7 +789,7 @@
     /* ===== 수량 조절 버튼 (2줄 레이아웃) ===== */
     .quantity-controls {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 8px;
       margin-bottom: 15px;
     }
@@ -678,34 +798,35 @@
       height: 40px;
       font-size: 16px;
       font-weight: 700;
-      background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
+      background: linear-gradient(135deg, #F6BCCB 0%, #F2A7BC 100%);
       color: white;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
       user-select: none;
-      transition: background 0.3s;
+      transition: all 0.2s;
     }
 
     .qty-btn.theme-outre {
-      background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
+      background: linear-gradient(135deg, #6ACF8C 0%, #4FB978 100%);
     }
 
     .qty-btn.theme-sng {
-      background: linear-gradient(135deg, #9370DB 0%, #8A2BE2 100%);
+      background: linear-gradient(135deg, #B09AD8 0%, #9A86C9 100%);
     }
 
     .qty-btn:active {
       transform: scale(0.95);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
     }
 
     .qty-btn.clear {
-      background: linear-gradient(135deg, #DC143C 0%, #B22222 100%);
+      background: linear-gradient(135deg, #E85D5D 0%, #D44545 100%);
     }
 
     .qty-btn.all-toggle.active {
-      background: linear-gradient(135deg, #333333 0%, #555555 100%);
+      background: linear-gradient(135deg, #4A4A4A 0%, #666666 100%);
     }
 
     .qty-spacer {
@@ -737,7 +858,7 @@
     }
     
     .products-table th {
-      background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
+      background: linear-gradient(135deg, #F6BCCB 0%, #F2A7BC 100%);
       color: white;
       padding: 10px;
       text-align: left;
@@ -745,13 +866,13 @@
       font-size: 16px;
       transition: background 0.3s;
     }
-    
+
     .products-table.theme-outre th {
-      background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
+      background: linear-gradient(135deg, #FFB08C 0%, #FFA070 100%);
     }
-    
+
     .products-table.theme-sng th {
-      background: linear-gradient(135deg, #4169E1 0%, #9370DB 100%);
+      background: linear-gradient(135deg, #7AA1EA 0%, #6A92DD 100%);
     }
     
     .products-table td {
@@ -784,16 +905,13 @@
       text-align: right;
       white-space: normal;
       word-break: break-word;
-      overflow: hidden;
+      vertical-align: top;
     }
-    
+
     .price-text {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
       white-space: normal;
       word-break: break-word;
+      line-height: 1.4;
     }
     
     .color-shipped {
@@ -831,7 +949,7 @@
     }
 
     .products-table tbody tr.selected {
-      background-color: #FFE4B5 !important;
+      background-color: #FFF1E6 !important;
       border-left: 4px solid #FFB6C1;
       transition: border-left-color 0.3s;
     }
@@ -875,22 +993,25 @@
       margin: 0;
     }
     
-    /* 회사 뱃지 */
+    /* 회사 뱃지 - 미니멀 */
     .company-badge {
       display: inline-block;
       padding: 4px 12px;
       border-radius: 6px;
       font-size: 14px;
       font-weight: 700;
-      color: white;
     }
-    
+
     .company-badge.outre {
-      background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
+      background: rgba(255, 140, 0, 0.12);
+      color: #FF8C00;
+      border: 1px solid rgba(255, 140, 0, 0.3);
     }
-    
+
     .company-badge.sng {
-      background: linear-gradient(135deg, #4169E1 0%, #9370DB 100%);
+      background: rgba(65, 105, 225, 0.12);
+      color: #4169E1;
+      border: 1px solid rgba(65, 105, 225, 0.3);
     }
     
     /* 주문 페이지 이동 버튼 */
@@ -960,6 +1081,123 @@
       transform: scale(0.98);
     }
     
+    /* ===== 백오더 프롬프트 모달 ===== */
+    #backorderModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 10001;
+      overflow: auto;
+    }
+
+    #backorderModal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .backorder-modal-content {
+      background: white;
+      border-radius: 16px;
+      max-width: 400px;
+      width: 100%;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      animation: modalSlideIn 0.3s ease-out;
+    }
+
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .backorder-modal-header {
+      background: linear-gradient(135deg, #28a745 0%, #5cb85c 100%);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .backorder-modal-body {
+      padding: 30px 20px;
+      text-align: center;
+    }
+
+    .backorder-modal-message {
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 25px;
+      color: #333;
+    }
+
+    .backorder-modal-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .backorder-btn {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .backorder-btn:active {
+      transform: scale(0.98);
+    }
+
+    .backorder-btn.yes {
+      background: linear-gradient(135deg, #28a745 0%, #5cb85c 100%);
+      color: white;
+    }
+
+    .backorder-btn.no {
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+      color: white;
+    }
+
+    .backorder-remember {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .backorder-remember input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .backorder-remember label {
+      font-size: 14px;
+      color: #666;
+      cursor: pointer;
+    }
+
     /* ===== ORDER COMPLETE 모달 ===== */
     #orderModal {
       display: none;
@@ -972,7 +1210,7 @@
       z-index: 10000;
       overflow: auto;
     }
-    
+
     #orderModal.active {
       display: flex;
       align-items: center;
@@ -1157,7 +1395,7 @@
       }
       
       .quantity-controls {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
       }
 
       .qty-btn {
@@ -1180,15 +1418,14 @@
     
     @media (max-width: 480px) {
       .barcode-container {
-        flex-direction: column;
-      }
-      
-      .camera-btn {
-        width: 100%;
+        gap: 6px;
       }
 
-      .keyboard-btn {
-        width: 100%;
+      .camera-btn,
+      .keyboard-btn,
+      .search-btn {
+        font-size: 13px;
+        padding: 0 12px;
       }
       
       .action-buttons {
@@ -1201,6 +1438,18 @@
       
       .modal-btn {
         width: 100%;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .quantity-controls {
+        gap: 6px;
+      }
+
+      .qty-btn {
+        height: 34px;
+        font-size: 12px;
+        border-radius: 6px;
       }
     }
 
@@ -1234,7 +1483,7 @@
     }
 
     .stats-title::before {
-      content: '📊';
+      content: '';
       font-size: 18px;
     }
 
@@ -1357,7 +1606,7 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>🛒 CC3 HAIR ORDER APP</h1>
+      <h1>CC HAIR ORDER APP v2</h1>
       <button class="order-complete-header-btn" onclick="app.showOrderComplete()">
         ORDER COMPLETE
       </button>
@@ -1366,70 +1615,55 @@
     <div class="content">
       <!-- 바코드 입력 섹션 -->
       <div id="inputSection">
-        <div class="input-label">
-          🔍 바코드 또는 제품명을 입력하세요
-        </div>
-
         <div class="barcode-container">
-          <input type="text" id="barcodeDisplay" maxlength="50" inputmode="none" readonly>
-          <button class="camera-btn" onclick="app.openCamera()">📷 카메라</button>
-          <button class="keyboard-btn" onclick="app.toggleKeyboardMode()">⌨ 키보드</button>
-        </div>
-
-        <button class="search-btn" onclick="app.searchFromKeyboard()">🔍 검색</button>
-        
-        <div class="keypad">
-          <button class="key-btn" onclick="app.addDigit('1')">1</button>
-          <button class="key-btn" onclick="app.addDigit('2')">2</button>
-          <button class="key-btn" onclick="app.addDigit('3')">3</button>
-          <button class="key-btn" onclick="app.addDigit('4')">4</button>
-          <button class="key-btn" onclick="app.addDigit('5')">5</button>
-          <button class="key-btn" onclick="app.addDigit('6')">6</button>
-          <button class="key-btn" onclick="app.addDigit('7')">7</button>
-          <button class="key-btn" onclick="app.addDigit('8')">8</button>
-          <button class="key-btn" onclick="app.addDigit('9')">9</button>
-          <button class="key-btn delete" onclick="app.clearBarcode()">⌫</button>
-          <button class="key-btn" onclick="app.addDigit('0')">0</button>
-          <button class="key-btn delete" onclick="app.deleteDigit()">←</button>
+          <div class="barcode-input-row">
+            <input type="text" id="barcodeDisplay" maxlength="50" inputmode="none" readonly placeholder="Enter barcode or name">
+          </div>
+          <div class="barcode-buttons-row">
+            <button class="camera-btn" onclick="app.openCamera()">Camera</button>
+            <button class="keyboard-btn" onclick="app.toggleKeyboardMode()">Keyboard</button>
+            <button class="search-btn" onclick="app.searchFromKeyboard()">Search</button>
+          </div>
         </div>
 
         <div class="quick-section">
-          <div class="quick-header">⭐ 즐겨찾기</div>
+          <div class="quick-header">Favorites</div>
           <div id="favoritesList" class="quick-list"></div>
-          <div id="favoritesEmpty" class="quick-empty">즐겨찾기 없음</div>
+          <div id="favoritesEmpty" class="quick-empty">No favorites</div>
         </div>
 
         <div class="quick-section">
-          <div class="quick-header">🕘 최근 검색/스캔</div>
+          <div class="quick-header">Recent searches/scans</div>
           <div id="historyList" class="quick-list"></div>
-          <div id="historyEmpty" class="quick-empty">최근 항목 없음</div>
+          <div id="historyEmpty" class="quick-empty">No recent items</div>
         </div>
       </div>
       
       <!-- 로딩 -->
       <div id="loading">
         <div class="spinner"></div>
-        <div class="loading-text">검색 중...</div>
+        <div class="loading-text">Searching...</div>
       </div>
       
       <!-- 결과 섹션 -->
       <div id="resultsSection">
         <div class="results-summary" id="keywordBackRow" style="display: none;">
-          <button class="keyword-back-btn" onclick="app.backToKeywordResults()">← 검색 결과</button>
+          <button class="keyword-back-btn" onclick="app.backToKeywordResults()">Back to results</button>
         </div>
         <div class="action-buttons-top">
-          <button class="action-btn-top add" onclick="app.addToOrder()">
-            <span style="font-size: 24px;">➕</span>
-          </button>
           <button class="action-btn-top save-camera" onclick="app.saveAndOpenCamera()">
-            <span style="font-size: 20px;">💾📷</span>
+            <span class="btn-icon">SAVE</span>
+            <span class="btn-label">SCAN</span>
           </button>
           <button class="action-btn-top save-back" onclick="app.saveAndGoBack()">
-            <span style="font-size: 20px;">💾↩️</span>
+            <span class="btn-icon">SAVE</span>
+            <span class="btn-label">SEARCH</span>
           </button>
-          <button class="action-btn-top cart" onclick="app.showOrderComplete()">
-            <span style="font-size: 24px;">🛒</span>
+          <button class="action-btn-top cancel" onclick="app.cancelToSearch()">
+            <span class="btn-icon">BACK</span>
+            <span class="btn-label">SEARCH</span>
           </button>
+          <button class="action-btn-top cart" onclick="app.showOrderComplete()">CART</button>
         </div>
         
         <div class="results-summary">
@@ -1440,26 +1674,22 @@
         <!-- 컬러 통계 영역 (고정 위치) - 주석 처리 (나중 사용) -->
         <!--
         <div id="color-stats-container">
-          <div class="stats-title">컬러 정보</div>
+          <div class="stats-title">Color info</div>
           <div id="color-stats-content"></div>
         </div>
         -->
 
         <div class="quantity-controls">
-          <!-- 1줄: ALL, +1, +3, +6, +10, +12 -->
+          <!-- 1줄: ALL, +1, +3, +6 -->
           <button class="qty-btn all-toggle" onclick="app.toggleAllMode()">ALL</button>
           <button class="qty-btn" onclick="app.adjustQuantity(1)">+1</button>
           <button class="qty-btn" onclick="app.adjustQuantity(3)">+3</button>
           <button class="qty-btn" onclick="app.adjustQuantity(6)">+6</button>
+
+          <!-- 2줄: +10, +12, CLEAR, 여백 -->
           <button class="qty-btn" onclick="app.adjustQuantity(10)">+10</button>
           <button class="qty-btn" onclick="app.adjustQuantity(12)">+12</button>
-
-          <!-- 2줄: CLEAR + 여백 (나중 확장용) -->
           <button class="qty-btn clear" onclick="app.clearQuantity()">CLEAR</button>
-          <div class="qty-spacer"></div>
-          <div class="qty-spacer"></div>
-          <div class="qty-spacer"></div>
-          <div class="qty-spacer"></div>
           <div class="qty-spacer"></div>
         </div>
         
@@ -1467,7 +1697,7 @@
           <table class="products-table">
             <thead>
               <tr>
-                <th class="qty-col">수량</th>
+                <th class="qty-col">Qty</th>
                 <th class="color-col">COLOR</th>
                 <th class="shipped-col">SHIPPED (12MO)</th>
                 <th class="price-col">PRICE</th>
@@ -1482,8 +1712,8 @@
       <!-- 키워드 검색 결과 섹션 -->
       <div id="keywordResultsSection">
         <div class="keyword-header">
-          <button class="keyword-back-btn" onclick="app.backToKeywordInput()">←</button>
-          <div class="keyword-title">검색 결과</div>
+          <button class="keyword-back-btn" onclick="app.backToKeywordInput()">Back</button>
+          <div class="keyword-title">Search results</div>
         </div>
         <div class="keyword-meta" id="keywordMeta"></div>
         <div class="keyword-tabs">
@@ -1491,10 +1721,10 @@
           <button class="keyword-tab" id="tabSng" onclick="app.switchKeywordCompany('SNG')">SNG</button>
         </div>
         <div class="keyword-filters">
-          <button class="keyword-filter active" data-filter="ALL" onclick="app.setKeywordFilter('ALL')">전체</button>
-          <button class="keyword-filter" data-filter="ACTIVE" onclick="app.setKeywordFilter('ACTIVE')">활성</button>
-          <button class="keyword-filter" data-filter="DISCONTINUE_UNKNOWN" onclick="app.setKeywordFilter('DISCONTINUE_UNKNOWN')">단종 예정</button>
-          <button class="keyword-filter" data-filter="DISCONTINUED" onclick="app.setKeywordFilter('DISCONTINUED')">단종</button>
+          <button class="keyword-filter active" data-filter="ALL" onclick="app.setKeywordFilter('ALL')">All</button>
+          <button class="keyword-filter" data-filter="ACTIVE" onclick="app.setKeywordFilter('ACTIVE')">Active</button>
+          <button class="keyword-filter" data-filter="DISCONTINUE_UNKNOWN" onclick="app.setKeywordFilter('DISCONTINUE_UNKNOWN')">Discontinue soon</button>
+          <button class="keyword-filter" data-filter="DISCONTINUED" onclick="app.setKeywordFilter('DISCONTINUED')">Discontinued</button>
         </div>
         <div id="keywordResultsList" class="keyword-list"></div>
         <div id="keywordEmpty" class="keyword-empty" style="display: none;"></div>
@@ -1504,24 +1734,40 @@
   
   <!-- 카메라 모달 -->
   <div id="cameraModal">
-    <div class="camera-header">
-      📷 바코드를 화면 중앙에 맞추세요
-    </div>
+    <div class="camera-header">Align the barcode in the center</div>
     <div class="camera-viewport">
       <video id="video" autoplay playsinline></video>
       <canvas id="canvas" style="display:none;"></canvas>
+      <div class="scan-guide"></div>
+      <div class="scan-tip" id="scanTip">Align the barcode inside the guide</div>
     </div>
     <div class="camera-footer">
-      <button class="close-camera-btn" onclick="app.closeCamera()">✕ 닫기</button>
+      <button class="close-camera-btn" onclick="app.closeCamera()">Close</button>
     </div>
   </div>
   
+  <!-- 백오더 프롬프트 모달 -->
+  <div id="backorderModal">
+    <div class="backorder-modal-content">
+      <div class="backorder-modal-header">Backorder auto-fill</div>
+      <div class="backorder-modal-body">
+        <div class="backorder-modal-message">Auto-fill backorder quantity?<br>(Shown in green)</div>
+        <div class="backorder-modal-buttons">
+          <button class="backorder-btn yes" onclick="app.handleBackorderChoice(true)">YES</button>
+          <button class="backorder-btn no" onclick="app.handleBackorderChoice(false)">NO</button>
+        </div>
+        <div class="backorder-remember" onclick="app.toggleBackorderRemember()">
+          <input type="checkbox" id="backorderRememberCheckbox">
+          <label for="backorderRememberCheckbox">Remember this choice</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ORDER COMPLETE 모달 -->
   <div id="orderModal">
     <div class="order-modal-content">
-      <div class="order-modal-header">
-        📦 주문 내역
-      </div>
+      <div class="order-modal-header">Order summary</div>
       
       <!-- 회사 탭 -->
       <div class="company-tabs">
@@ -1537,15 +1783,9 @@
         <!-- 데이터가 여기에 표시됩니다 -->
       </div>
       <div class="order-modal-footer">
-        <button class="modal-btn copy" onclick="app.copyOrderData()">
-          📋 복사하기
-        </button>
-        <button class="modal-btn clear-list" onclick="app.clearOrderList()">
-          🗑️ 리스트 비우기
-        </button>
-        <button class="modal-btn close" onclick="app.closeOrderModal()">
-          ✕ 닫기
-        </button>
+        <button class="modal-btn copy" onclick="app.copyOrderData()">Copy</button>
+        <button class="modal-btn clear-list" onclick="app.clearOrderList()">Clear list</button>
+        <button class="modal-btn close" onclick="app.closeOrderModal()">Close</button>
       </div>
     </div>
   </div>
@@ -1564,28 +1804,28 @@
     // ============================================================================
     var STATUS_CONFIG = {
       'NEW': {
-        label: '신규',
+        label: 'New',
         badgeClass: 'badge-new',
         rowClass: 'status-new',
         showBadge: true,
         allowInput: true
       },
       'ACTIVE': {
-        label: '활성',
+        label: 'Active',
         badgeClass: '',
         rowClass: 'status-active',
         showBadge: false,
         allowInput: true
       },
       'DISCONTINUE_UNKNOWN': {
-        label: '단종 예정',
+        label: 'Discontinue soon',
         badgeClass: 'badge-discontinue-unknown',
         rowClass: 'status-discontinue-unknown',
         showBadge: true,
         allowInput: true  // 정책: 현재는 허용, 필요시 false로 변경 가능
       },
       'DISCONTINUED': {
-        label: '단종',
+        label: 'Discontinued',
         badgeClass: 'badge-discontinued',
         rowClass: 'status-discontinued',
         showBadge: true,
@@ -1634,6 +1874,7 @@
       lastSelectedCompany: '',
       history: [],
       favorites: [],
+      backorderPrompted: false,
       
       // DOM 요소
       barcodeDisplay: null,
@@ -1657,6 +1898,7 @@
       favoritesList: null,
       favoritesEmpty: null,
       cameraModal: null,
+      backorderModal: null,
       orderModal: null,
       orderModalBody: null,
       alertMessage: null,
@@ -1687,10 +1929,11 @@
         this.favoritesList = document.getElementById('favoritesList');
         this.favoritesEmpty = document.getElementById('favoritesEmpty');
         this.cameraModal = document.getElementById('cameraModal');
+        this.backorderModal = document.getElementById('backorderModal');
         this.orderModal = document.getElementById('orderModal');
         this.orderModalBody = document.getElementById('orderModalBody');
         this.alertMessage = document.getElementById('alertMessage');
-        
+
         // 바코드 입력 이벤트
         this.barcodeDisplay.addEventListener('input', this.onBarcodeInput.bind(this));
         this.barcodeDisplay.addEventListener('paste', this.onBarcodePaste.bind(this));
@@ -1713,38 +1956,34 @@
         console.log('초기화 완료');
       },
       
-      // 바코드 스캐너 설정
+      // 바코드 스캐너 설정 (하드웨어 스캐너)
       setupBarcodeScanner: function() {
         var self = this;
         var scanBuffer = '';
         var scanTimeout = null;
-        
+
         document.addEventListener('keydown', function(e) {
           if (self.cameraActive || self.orderModal.classList.contains('active') || self.keyboardMode) {
             return;
           }
-          
+
           if (e.key.length === 1 && /[0-9]/.test(e.key)) {
             scanBuffer += e.key;
-            
+
             clearTimeout(scanTimeout);
             scanTimeout = setTimeout(function() {
               if (scanBuffer.length === 12) {
                 console.log('스캐너 입력:', scanBuffer);
-                self.barcode = scanBuffer;
-                self.barcodeDisplay.value = scanBuffer;
-                self.searchProduct();
+                self.handleSearchInput(scanBuffer, 'scanner');
               }
               scanBuffer = '';
             }, 100);
           } else if (e.key === 'Enter' && scanBuffer.length === 12) {
             e.preventDefault();
             console.log('스캐너 입력 (Enter):', scanBuffer);
-            self.barcode = scanBuffer;
-            self.barcodeDisplay.value = scanBuffer;
-            scanBuffer = '';
             clearTimeout(scanTimeout);
-            self.searchProduct();
+            self.handleSearchInput(scanBuffer, 'scanner');
+            scanBuffer = '';
           }
         });
       },
@@ -1752,6 +1991,15 @@
       // 바코드 입력
       onBarcodeInput: function(e) {
         this.barcode = e.target.value.trim();
+
+        // 입력값 있으면 안내 문구 숨김
+        if (this.inputPlaceholder) {
+          if (this.barcode) {
+            this.inputPlaceholder.classList.add('hidden');
+          } else {
+            this.inputPlaceholder.classList.remove('hidden');
+          }
+        }
       },
       
       // 바코드 키다운
@@ -1771,17 +2019,10 @@
         e.preventDefault();
         var pastedText = (e.clipboardData || window.clipboardData).getData('text');
         var cleaned = pastedText.trim().substring(0, 50);
-        
-        this.barcode = cleaned;
-        this.barcodeDisplay.value = cleaned;
-        
+
         var self = this;
         setTimeout(function() {
-          if (self.keyboardMode) {
-            self.searchFromKeyboard();
-          } else {
-            self.searchProduct();
-          }
+          self.handleSearchInput(cleaned, 'paste');
         }, 100);
       },
       
@@ -1803,6 +2044,12 @@
       clearBarcode: function() {
         this.barcode = '';
         this.barcodeDisplay.value = '';
+
+        // 안내 문구 다시 표시
+        if (this.inputPlaceholder) {
+          this.inputPlaceholder.classList.remove('hidden');
+        }
+
         if (this.keyboardMode) {
           this.barcodeDisplay.focus();
         }
@@ -1831,22 +2078,31 @@
         }
       },
 
-      searchFromKeyboard: function() {
+      // ========================================
+      // 통합 입력 처리 함수 (카메라/키보드/스캐너 공통)
+      // ========================================
+      handleSearchInput: function(value, source) {
         if (this.processing) return;
 
-        var input = (this.barcode || '').trim();
+        var input = (value || '').trim();
         if (!input) {
-          this.showAlert('❌ 검색어를 입력해주세요.');
+          this.showAlert('Please enter a search term.');
           return;
         }
 
-        this.keywordReturnEnabled = false;
+        console.log('[입력 처리] source=' + source + ', value=' + input);
 
+        this.keywordReturnEnabled = false;
+        this.barcode = input;
+        this.barcodeDisplay.value = input;
+
+        // 12자리 숫자 → 바코드 검색
         if (/^\d{12}$/.test(input)) {
           this.searchProduct();
           return;
         }
 
+        // 그 외 → 키워드 검색
         this.keywordQuery = input;
         this.processing = true;
         this.showSection('loading');
@@ -1861,13 +2117,17 @@
           })
           .searchByKeyword(input, this.lastSelectedCompany || '');
       },
+
+      searchFromKeyboard: function() {
+        this.handleSearchInput(this.barcode, 'keyboard');
+      },
       
       // 제품 검색
       searchProduct: function() {
         if (this.processing) return;
         
         if (!this.barcode || this.barcode.trim() === '') {
-          this.showAlert('❌ 검색어를 입력해주세요.');
+          this.showAlert('Please enter a search term.');
           return;
         }
         
@@ -1948,14 +2208,33 @@
           this.keywordBackRow.style.display = this.keywordReturnEnabled ? 'flex' : 'none';
         }
 
-        var backorderAppliedCount = 0;
+        // ========================================
+        // 백오더 자동 입력 프롬프트
+        // ========================================
+        var hasBackorder = false;
         for (var i = 0; i < this.products.length; i++) {
-          if (this.products[i].backorderApplied) {
-            backorderAppliedCount++;
+          var product = this.products[i];
+          if (product.backorderApplied || (product.backorder2mo && product.backorder2mo > 0)) {
+            hasBackorder = true;
+            break;
           }
         }
-        if (backorderAppliedCount > 0) {
-          this.showAlert('백오더 수량 자동 입력 - 녹색');
+
+        if (hasBackorder) {
+          // localStorage에서 사용자 설정 확인
+          var backorderPreference = localStorage.getItem('backorderAutoFill');
+
+          if (backorderPreference === null) {
+            // 설정이 없으면 모달 표시
+            if (!this.backorderPrompted) {
+              this.showBackorderModal();
+              this.backorderPrompted = true;
+            }
+          } else if (backorderPreference === 'true') {
+            // YES로 기억한 경우 알림 표시
+            this.showAlert('Backorder auto-fill applied (green).');
+          }
+          // NO로 기억한 경우 아무것도 표시하지 않음
         }
 
         // 첫 번째 제품 자동 선택 (그룹 헤더 제외)
@@ -1983,7 +2262,7 @@
         this.processing = false;
 
         if (!result || !result.success) {
-          this.showAlert(result && result.error ? result.error : '❌ 검색 중 오류가 발생했습니다.');
+          this.showAlert(result && result.error ? result.error : 'Search failed. Please try again.');
           this.showSection('input');
           return;
         }
@@ -1997,7 +2276,7 @@
 
         if (this.keywordMetaEl) {
           var total = (this.keywordMeta && this.keywordMeta.totalCount) ? this.keywordMeta.totalCount : 0;
-          this.keywordMetaEl.textContent = '"' + this.keywordQuery + '" 결과 ' + total + '개';
+          this.keywordMetaEl.textContent = 'Results for "' + this.keywordQuery + '" (' + total + ')';
         }
 
         this.showSection('keyword-results');
@@ -2006,7 +2285,7 @@
       handleKeywordSearchError: function(error) {
         this.processing = false;
         this.showSection('input');
-        this.showAlert('❌ 검색 중 오류가 발생했습니다.');
+        this.showAlert('Search failed. Please try again.');
         console.error('키워드 검색 오류:', error);
       },
 
@@ -2103,7 +2382,7 @@
 
           var favBtn = document.createElement('button');
           favBtn.className = 'favorite-btn';
-          favBtn.textContent = this.isFavorite(item) ? '★' : '☆';
+          favBtn.textContent = this.isFavorite(item) ? 'Fav' : 'Fav+';
           favBtn.onclick = (function(self, data) {
             return function(e) {
               e.stopPropagation();
@@ -2138,25 +2417,25 @@
       getKeywordStatusLabel: function(item) {
         var counts = item.colorCounts || {};
         if ((counts.discontinued || 0) > 0 && (counts.active || 0) === 0 && (counts.discontinueUnknown || 0) === 0) {
-          return '단종';
+          return 'Discontinued';
         }
         if ((counts.discontinueUnknown || 0) > 0 && (counts.active || 0) === 0) {
-          return '단종 예정';
+          return 'Discontinue soon';
         }
         if ((counts.discontinued || 0) > 0 || (counts.discontinueUnknown || 0) > 0) {
-          return '혼합';
+          return 'Mixed';
         }
-        return '활성';
+        return 'Active';
       },
 
       buildKeywordEmptyMessage: function() {
         var meta = this.keywordMeta || {};
         var suggestions = meta.suggestions || [];
         var tips = meta.tips || [];
-        var lines = ['검색 결과가 없습니다.'];
+        var lines = ['No results found.'];
 
         if (suggestions.length > 0) {
-          lines.push('유사 키워드: ' + suggestions.join(', '));
+          lines.push('Similar keywords: ' + suggestions.join(', '));
         }
         if (tips.length > 0) {
           lines = lines.concat(tips);
@@ -2223,19 +2502,19 @@
         var stats = meta.colorStats;
         statsContent.innerHTML =
           '<div class="stat-item">' +
-            '<span class="stat-label">전체</span>' +
+            '<span class="stat-label">Total</span>' +
             '<span class="stat-value">' + stats.total + '</span>' +
           '</div>' +
           '<div class="stat-item">' +
-            '<span class="stat-label">활성</span>' +
+            '<span class="stat-label">Active</span>' +
             '<span class="stat-value" style="color: #4CAF50;">' + stats.active + '</span>' +
           '</div>' +
           '<div class="stat-item">' +
-            '<span class="stat-label">단종 예정</span>' +
+            '<span class="stat-label">Discontinue soon</span>' +
             '<span class="stat-value" style="color: #FF9800;">' + stats.discontinueUnknown + '</span>' +
           '</div>' +
           '<div class="stat-item">' +
-            '<span class="stat-label">단종</span>' +
+            '<span class="stat-label">Discontinued</span>' +
             '<span class="stat-value" style="color: #f44336;">' + stats.discontinued + '</span>' +
           '</div>';
 
@@ -2247,7 +2526,7 @@
       handleSearchError: function(error) {
         this.processing = false;
         this.showSection('input');
-        this.showAlert('❌ 검색 중 오류가 발생했습니다.');
+        this.showAlert('Search failed. Please try again.');
         console.error('검색 오류:', error);
         this.clearBarcode();
       },
@@ -2382,7 +2661,7 @@
           if (!statusConfig.allowInput) {
             var disabledLabel = document.createElement('div');
             disabledLabel.className = 'input-disabled-label';
-            disabledLabel.textContent = '입력 불가';
+            disabledLabel.textContent = 'Disabled';
             qtyCell.appendChild(disabledLabel);
           }
 
@@ -2535,7 +2814,7 @@
         }
         
         if (!hasQty) {
-          this.showAlert('⚠️ 수량이 입력된 제품이 없습니다.');
+          this.showAlert('No quantities entered.');
           return;
         }
         
@@ -2659,7 +2938,7 @@
       // 저장 후 돌아가기 성공
       handleSaveAndBackSuccess: function(result) {
         this.processing = false;
-        
+
         if (result.success) {
           // 알림 없이 바로 리셋
           this.reset();
@@ -2668,15 +2947,21 @@
           this.showSection('results');
         }
       },
-      
+
       // 추가 실패
       handleAddError: function(error) {
         this.processing = false;
         this.showSection('results');
-        this.showAlert('❌ 주문 추가 중 오류가 발생했습니다.');
+        this.showAlert('Failed to add items to the order.');
         console.error('추가 오류:', error);
       },
-      
+
+      // 취소 (저장 없이 검색창으로)
+      cancelToSearch: function() {
+        console.log('저장 없이 검색창으로 돌아가기');
+        this.reset();
+      },
+
       // 취소
       cancel: function() {
         this.reset();
@@ -2981,29 +3266,29 @@
       
       startCamera: function() {
         var self = this;
-        
+
         // ZXing 초기화
         this.codeReader = new ZXing.BrowserMultiFormatReader();
         this.videoElement = document.getElementById('video');
         this.canvasElement = document.getElementById('canvas');
-        
+
         console.log('ZXing 카메라 시작...');
-        
+
         // 후면 카메라 선택
         this.codeReader.listVideoInputDevices()
           .then(function(videoInputDevices) {
             console.log('감지된 카메라:', videoInputDevices.length + '개');
-            
+
             // 후면 카메라 찾기
             var selectedDeviceId = videoInputDevices[0].deviceId;
-            
+
             for (var i = 0; i < videoInputDevices.length; i++) {
               var device = videoInputDevices[i];
               var label = device.label.toLowerCase();
-              
+
               // 후면 카메라 키워드
-              if (label.indexOf('back') > -1 || 
-                  label.indexOf('rear') > -1 || 
+              if (label.indexOf('back') > -1 ||
+                  label.indexOf('rear') > -1 ||
                   label.indexOf('환경') > -1 ||
                   label.indexOf('후면') > -1) {
                 selectedDeviceId = device.deviceId;
@@ -3011,46 +3296,46 @@
                 break;
               }
             }
-            
+
             // 연속 스캔 시작
             self.codeReader.decodeFromVideoDevice(selectedDeviceId, self.videoElement, function(result, err) {
-              if (result) {
-                var code = result.text;
-                console.log('바코드 감지:', code);
-                
-                // 12자리 숫자 검증
-                if (code && code.length === 12 && /^\d{12}$/.test(code)) {
-                  console.log('✅ 유효한 바코드:', code);
+              if (result && result.text) {
+                var scannedBarcode = result.text;
+                console.log('바코드 감지:', scannedBarcode);
+
+                // 12자리 숫자 바코드인지 확인
+                if (/^\d{12}$/.test(scannedBarcode)) {
+                  console.log('✅ 유효한 바코드:', scannedBarcode);
                   
-                  // 진동
+                  // 여러 번 스캔되는 것을 방지하기 위해 즉시 카메라를 닫습니다.
+                  self.closeCamera();
+
+                  // 진동으로 사용자에게 피드백
                   if (navigator.vibrate) {
-                    navigator.vibrate([100, 50, 100]);
+                    navigator.vibrate(150);
                   }
                   
-                  // 카메라 중지 및 검색
-                  self.closeCamera();
-                  self.barcode = code;
-                  self.barcodeDisplay.value = code;
-                  
-                  setTimeout(function() {
-                    self.searchProduct();
-                  }, 300);
+                  // 통합 검색 핸들러를 호출합니다.
+                  self.handleSearchInput(scannedBarcode, 'camera');
+
                 } else {
-                  console.log('❌ 무효한 바코드 (12자리 아님):', code);
+                  // 유효하지 않은 바코드는 무시하고 로그만 남깁니다.
+                  console.log('❌ 무시된 바코드 (12자리 숫자 아님):', scannedBarcode);
                 }
               }
-              
-              if (err && err.name !== 'NotFoundException') {
-                console.log('스캔 오류:', err);
+
+              // NotFoundException은 계속 스캔 중임을 의미하므로 오류로 처리하지 않습니다.
+              if (err && !(err instanceof ZXing.NotFoundException)) {
+                console.error('스캔 중 오류 발생:', err);
               }
             });
-            
+
             self.cameraActive = true;
             console.log('카메라 시작 성공');
           })
           .catch(function(err) {
             console.error('카메라 접근 오류:', err);
-            self.showAlert('❌ 카메라를 시작할 수 없습니다.\n\n카메라 권한을 확인해주세요.');
+            self.showAlert('Unable to start the camera.\n\nPlease check camera permissions.');
             self.closeCamera();
           });
       },
@@ -3116,7 +3401,7 @@
             self.displayOrderData(result, company);
           })
           .withFailureHandler(function(error) {
-            self.showAlert('❌ 주문 데이터 조회 실패');
+            self.showAlert('Failed to load order data.');
             console.error('조회 오류:', error);
           })
           .getOrderData(company);
@@ -3131,7 +3416,7 @@
         this.orderData[company] = result.data || [];
         
         if (this.orderData[company].length === 0) {
-          this.orderModalBody.innerHTML = '<div class="empty-message">주문 내역이 없습니다.</div>';
+          this.orderModalBody.innerHTML = '<div class="empty-message">No orders yet.</div>';
         } else {
           var html = '<div class="order-table-container"><table class="order-table">';
           
@@ -3156,7 +3441,7 @@
         var data = this.orderData[this.viewingCompany];
         
         if (!data || data.length === 0) {
-          this.showAlert('복사할 데이터가 없습니다.');
+          this.showAlert('No data to copy.');
           return;
         }
         
@@ -3169,7 +3454,7 @@
         
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(text).then(function() {
-            self.showAlert('✅ 복사되었습니다!', 2000);
+            self.showAlert('Copied.', 2000);
           }).catch(function(err) {
             console.error('복사 실패:', err);
             self.fallbackCopy(text);
@@ -3189,10 +3474,10 @@
         
         try {
           document.execCommand('copy');
-          this.showAlert('✅ 복사되었습니다!', 2000);
+          this.showAlert('Copied.', 2000);
         } catch (err) {
           console.error('복사 실패:', err);
-          this.showAlert('❌ 복사에 실패했습니다.');
+          this.showAlert('Copy failed.');
         }
         
         document.body.removeChild(textarea);
@@ -3201,7 +3486,7 @@
       clearOrderList: function() {
         var companyName = this.viewingCompany === 'SNG' ? 'SNG' : 'OUTRE';
         
-        if (!confirm(companyName + ' 주문 내역을 백업하고 비우시겠습니까?\n\n백업은 날짜_시간 이름의 숨김 탭에 저장됩니다.')) {
+        if (!confirm(companyName + ' order list will be backed up and cleared. Continue?\n\nA backup will be saved in a hidden tab named with the date and time.')) {
           return;
         }
         
@@ -3218,7 +3503,7 @@
             }
           })
           .withFailureHandler(function(error) {
-            self.showAlert('❌ 리스트 비우기 실패');
+            self.showAlert('Failed to clear the list.');
             console.error('비우기 오류:', error);
           })
           .clearOrderList(this.viewingCompany);
@@ -3226,6 +3511,45 @@
       
       closeOrderModal: function() {
         this.orderModal.classList.remove('active');
+      },
+
+      // ========================================
+      // 백오더 모달 제어
+      // ========================================
+      showBackorderModal: function() {
+        console.log('백오더 프롬프트 모달 열기');
+        this.backorderModal.classList.add('active');
+      },
+
+      closeBackorderModal: function() {
+        this.backorderModal.classList.remove('active');
+      },
+
+    handleBackorderChoice: function(choice) {
+      var rememberCheckbox = document.getElementById('backorderRememberCheckbox');
+      if (rememberCheckbox.checked) {
+        localStorage.setItem('backorderAutoFill', choice.toString());
+      }
+
+      // '아니오' 선택 시, 자동 입력된 백오더 수량을 제거하고 테이블을 새로고침합니다.
+      if (choice === false) {
+        for (var i = 0; i < this.products.length; i++) {
+          if (this.products[i].backorderApplied) {
+            this.products[i].backorderApplied = false;
+          }
+        }
+        this.displayProducts(); // 변경사항을 적용하여 테이블을 다시 그립니다.
+        this.showAlert('Backorder auto-fill removed.');
+      }
+
+      this.closeBackorderModal();
+    },
+
+      toggleBackorderRemember: function() {
+        var checkbox = document.getElementById('backorderRememberCheckbox');
+        if (checkbox) {
+          checkbox.checked = !checkbox.checked;
+        }
       }
     };
     

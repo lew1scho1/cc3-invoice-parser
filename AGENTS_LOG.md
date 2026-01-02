@@ -147,3 +147,4 @@ function parseLineItems(lines, vendor) {
 - Rebuilt SNG item/price parsing to use decimal matches (robust to missing spaces) and added price-line boundary check during color scans.
 - Added item-start boundary detection (qty+itemId without prices) and ensured price lines with colors are captured even when colorText is empty.
 - Commented out legacy parsing helpers in `Invoice_Parser.js` to avoid name collisions with SNG/OUTRE modules.
+안녕 나는 gemini야

@@ -11,7 +11,7 @@ function searchBarcodeInCompany(barcode, companyKey) {
     
     var company = CONFIG.COMPANIES[companyKey];
     if (!company) {
-      throw new Error('회사 정보를 찾을 수 없습니다: ' + companyKey);
+      throw new Error('Company not found: ' + companyKey);
     }
     
     var barcodeStr = barcode.toString().trim();
@@ -469,7 +469,7 @@ function searchBarcode(barcode) {
     if (!isValidBarcode(barcode)) {
       return {
         success: false,
-        error: '❌ 올바른 12자리 바코드를 입력해주세요.'
+        error: 'Please enter a valid 12-digit barcode.'
       };
     }
     
@@ -490,7 +490,7 @@ function searchBarcode(barcode) {
 
     return {
       success: false,
-      error: '❌ OUTRE DB와 SNG DB 모두에서 찾을 수 없습니다.'
+      error: 'Not found in OUTRE or SNG databases.'
     };
     
   } catch (error) {
@@ -499,7 +499,7 @@ function searchBarcode(barcode) {
     
     return {
       success: false,
-      error: '❌ 검색 중 오류가 발생했습니다.\n' + error.toString()
+      error: 'An error occurred while searching.\n' + error.toString()
     };
   }
 }
@@ -514,76 +514,77 @@ function searchByText(searchText, companyKey) {
     if (!searchText || searchText.trim() === '') {
       return {
         success: false,
-        error: '❌ 검색어를 입력해주세요.'
+        error: 'Please enter a search term.'
       };
     }
     
     var company = CONFIG.COMPANIES[companyKey];
     if (!company) {
-      throw new Error('회사 정보를 찾을 수 없습니다: ' + companyKey);
+      throw new Error('Company not found: ' + companyKey);
     }
     
-    var keywords = searchText.toString().trim().toUpperCase().split(/\s+/);
-    debugLog('검색 키워드', keywords);
-    
+    // 토큰 AND 매칭: 검색어를 공백 기준으로 나눠 모든 단어가 포함된 결과 찾기
+    var normalizedTokens = normalizeSearchTokens(searchText);
+    debugLog('검색 토큰', normalizedTokens);
+
     var sheet = getDbSheet(company.dbSheet);
     var data = sheet.getDataRange().getValues();
-    
+
     debugLog('시트 데이터 로드', { sheet: company.dbSheet, rows: data.length });
-    
+
     if (data.length < 2) {
       return {
         success: false,
-        error: '❌ 데이터가 없습니다.'
+        error: 'No data available.'
       };
     }
-    
+
     var headers = data[0];
     var colMap = getColumnMap(headers);
-    
+
     var requiredCols = [
       company.columns.ITEM_NUMBER,
       company.columns.ITEM_NAME,
       company.columns.COLOR,
       company.columns.BARCODE
     ];
-    
+
     for (var i = 0; i < requiredCols.length; i++) {
       if (colMap[requiredCols[i]] === undefined) {
         debugLog('필수 컬럼 누락', { column: requiredCols[i] });
         return {
           success: false,
-          error: '❌ 데이터 형식 오류'
+          error: 'Invalid data format.'
         };
       }
     }
-    
+
     var foundProducts = [];
     var barcodeMap = {};
-    
+
     for (var i = 1; i < data.length; i++) {
       var itemNumber = data[i][colMap[company.columns.ITEM_NUMBER]];
       var itemName = data[i][colMap[company.columns.ITEM_NAME]];
       var color = data[i][colMap[company.columns.COLOR]];
       var barcode = data[i][colMap[company.columns.BARCODE]];
-      
+
       if (!barcode) continue;
-      
-      var searchTarget = [
-        itemNumber ? itemNumber.toString().toUpperCase() : '',
-        itemName ? itemName.toString().toUpperCase() : '',
-        color ? color.toString().toUpperCase() : ''
-      ].join(' ');
-      
-      var allKeywordsFound = true;
-      for (var k = 0; k < keywords.length; k++) {
-        if (searchTarget.indexOf(keywords[k]) === -1) {
-          allKeywordsFound = false;
+
+      // 검색 대상 정규화 (공백/하이픈 제거, 대문자 변환)
+      var normalizedTarget = normalizeSearchQuery(
+        [itemNumber || '', itemName || '', color || ''].join(' ')
+      );
+
+      // 모든 토큰이 포함되는지 확인 (AND 매칭)
+      var allTokensFound = true;
+      for (var k = 0; k < normalizedTokens.length; k++) {
+        if (normalizedTarget.indexOf(normalizedTokens[k]) === -1) {
+          allTokensFound = false;
           break;
         }
       }
-      
-      if (allKeywordsFound) {
+
+      if (allTokensFound) {
         var key = barcode.toString();
         if (!barcodeMap[key]) {
           barcodeMap[key] = true;
@@ -604,7 +605,7 @@ function searchByText(searchText, companyKey) {
     if (foundProducts.length === 0) {
       return {
         success: false,
-        error: '❌ "' + searchText + '"에 해당하는 제품을 찾을 수 없습니다.'
+        error: '"' + searchText + '" was not found.'
       };
     }
     
@@ -623,7 +624,7 @@ function searchByText(searchText, companyKey) {
     
     return {
       success: false,
-      error: '❌ 검색 중 오류가 발생했습니다.\n' + error.toString()
+      error: 'An error occurred while searching.\n' + error.toString()
     };
   }
 }
@@ -638,7 +639,7 @@ function searchProduct(searchInput) {
     if (!searchInput || searchInput.trim() === '') {
       return {
         success: false,
-        error: '❌ 검색어를 입력해주세요.'
+        error: 'Please enter a search term.'
       };
     }
     
@@ -662,7 +663,7 @@ function searchProduct(searchInput) {
       
       return {
         success: false,
-        error: '❌ "' + input + '"에 해당하는 제품을 찾을 수 없습니다.\n\nOUTRE DB와 SNG DB 모두에서 검색했습니다.'
+        error: '"' + input + '" was not found.\n\nSearched in OUTRE and SNG databases.'
       };
     }
     
@@ -672,7 +673,7 @@ function searchProduct(searchInput) {
 
     return {
       success: false,
-      error: '❌ 검색 중 오류가 발생했습니다.\n' + error.toString()
+      error: 'An error occurred while searching.\n' + error.toString()
     };
   }
 }
@@ -713,20 +714,20 @@ function buildSearchResponse(scannedBarcode, company, searchResult) {
     if (scannedProduct.status === CONFIG.STATUS.DISCONTINUED) {
       alert = {
         type: 'error',
-        title: '단종 제품',
-        message: '스캔하신 제품은 단종(DISCONTINUED)되었습니다.\n주문이 불가능합니다.\n\n다른 컬러를 선택해주세요.'
+        title: 'Discontinued product',
+        message: 'This product is discontinued and cannot be ordered.\n\nPlease choose another color.'
       };
     } else if (scannedProduct.status === CONFIG.STATUS.DISCONTINUE_UNKNOWN) {
       alert = {
         type: 'warning',
-        title: '단종 예정 제품',
-        message: '이 제품은 단종 예정(DISCONTINUE_UNKNOWN) 상태입니다.\n재고 확인 후 주문해주세요.'
+        title: 'Discontinue soon',
+        message: 'This product is marked as discontinue soon.\nPlease check stock before ordering.'
       };
     } else if (scannedProduct.status === CONFIG.STATUS.NEW) {
       alert = {
         type: 'info',
-        title: '신규 제품',
-        message: '신규 등록된 제품입니다.'
+        title: 'New product',
+        message: 'This is a newly added product.'
       };
     }
   }
@@ -789,9 +790,21 @@ function normalizeSearchQuery(text) {
   if (!text) return '';
   return text.toString()
     .toUpperCase()
-    .replace(/[\s\-_]+/g, '')
+    .replace(/[^A-Z0-9]+/g, '')
     .trim();
 }
+
+function normalizeSearchTokens(text) {
+  if (!text) return [];
+  var rawTokens = text.toString().toUpperCase().split(/[^A-Z0-9]+/);
+  var tokens = [];
+  for (var i = 0; i < rawTokens.length; i++) {
+    var token = normalizeSearchQuery(rawTokens[i]);
+    if (token) tokens.push(token);
+  }
+  return tokens;
+}
+
 
 function normalizeColor(color) {
   if (!color) return '';
@@ -1021,17 +1034,18 @@ function rebuildSearchIndex(companyKey, uploadDate) {
 function searchByKeyword(query, lastSelectedCompany) {
   try {
     if (!query || query.toString().trim() === '') {
-      return { success: false, error: '검색어를 입력해주세요.' };
+      return { success: false, error: 'Please enter a search term.' };
     }
 
     var normalizedQuery = normalizeSearchQuery(query);
     if (normalizedQuery.length < 2) {
-      return { success: false, error: '검색어를 2글자 이상 입력해주세요.' };
+      return { success: false, error: 'Please enter at least 2 characters.' };
     }
+    var normalizedTokens = normalizeSearchTokens(query);
 
     var results = {
-      OUTRE: searchInIndex('OUTRE', normalizedQuery),
-      SNG: searchInIndex('SNG', normalizedQuery)
+      OUTRE: searchInIndex('OUTRE', normalizedQuery, normalizedTokens),
+      SNG: searchInIndex('SNG', normalizedQuery, normalizedTokens)
     };
 
     var meta = {
@@ -1045,8 +1059,8 @@ function searchByKeyword(query, lastSelectedCompany) {
     if (meta.totalCount === 0) {
       meta.suggestions = generateKeywordSuggestions(query);
       meta.tips = [
-        'ITEM NUMBER로도 검색 가능합니다.',
-        '부분 검색이 가능합니다.'
+        'You can also search by item number.',
+        'Partial matching is supported.'
       ];
     } else {
       meta.suggestions = [];
@@ -1062,11 +1076,11 @@ function searchByKeyword(query, lastSelectedCompany) {
   } catch (error) {
     debugLog('searchByKeyword 오류', { error: error.toString(), query: query });
     logError('searchByKeyword', error.toString(), { query: query });
-    return { success: false, error: '검색 중 오류가 발생했습니다.' };
+    return { success: false, error: 'An error occurred while searching.' };
   }
 }
 
-function searchInIndex(companyKey, normalizedQuery) {
+function searchInIndex(companyKey, normalizedQuery, normalizedTokens) {
   var sheet;
   try {
     sheet = getSearchIndexSheet(companyKey);
@@ -1088,8 +1102,22 @@ function searchInIndex(companyKey, normalizedQuery) {
     var normalizedDesc = normalizeSearchQuery(description);
     var normalizedItem = normalizeSearchQuery(itemNumber);
 
-    if (normalizedDesc.indexOf(normalizedQuery) > -1 ||
-        normalizedItem.indexOf(normalizedQuery) > -1) {
+    var normalizedCombined = normalizedDesc + ' ' + normalizedItem;
+
+    var exactMatch = normalizedDesc.indexOf(normalizedQuery) > -1 ||
+      normalizedItem.indexOf(normalizedQuery) > -1;
+
+    var tokenMatch = true;
+    if (normalizedTokens && normalizedTokens.length > 0) {
+      for (var t = 0; t < normalizedTokens.length; t++) {
+        if (normalizedCombined.indexOf(normalizedTokens[t]) === -1) {
+          tokenMatch = false;
+          break;
+        }
+      }
+    }
+
+    if (exactMatch || tokenMatch) {
       matches.push({
         description: description,
         itemNumber: itemNumber,
@@ -1151,7 +1179,7 @@ function generateKeywordSuggestions(query) {
 function getQuantityViewByDescription(description, companyKey, primaryBarcode) {
   try {
     if (!description || !companyKey) {
-      return { success: false, error: '검색 결과가 없습니다.' };
+      return { success: false, error: 'No results found.' };
     }
 
     var products = buildProductsByDescription(description, companyKey);
@@ -1159,7 +1187,7 @@ function getQuantityViewByDescription(description, companyKey, primaryBarcode) {
       if (primaryBarcode) {
         return searchBarcode(primaryBarcode);
       }
-      return { success: false, error: '검색 결과가 없습니다.' };
+      return { success: false, error: 'No results found.' };
     }
 
     products = sortProducts(products);
@@ -1170,7 +1198,7 @@ function getQuantityViewByDescription(description, companyKey, primaryBarcode) {
   } catch (error) {
     debugLog('getQuantityViewByDescription 오류', { error: error.toString() });
     logError('getQuantityViewByDescription', error.toString(), { description: description, company: companyKey });
-    return { success: false, error: '검색 중 오류가 발생했습니다.' };
+    return { success: false, error: 'An error occurred while searching.' };
   }
 }
 
