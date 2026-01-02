@@ -421,6 +421,22 @@ function parseAndSaveToParsing(fileId, isMultiFileMode) {
                       'ExtPrice 합계: $' + extPriceSum.toFixed(2);
     }
 
+    if (result.vendor === 'OUTRE' && result.subtotal > 0 && result.discount > 0) {
+      var expectedTotal = Number((result.subtotal - result.discount).toFixed(2));
+      var subtotalDiff = Math.abs(result.totalAmount - expectedTotal);
+
+      if (subtotalDiff > 1.0) {
+        validationMsg += '\n\n⚠️ SUBTOTAL-DISCOUNT 검증 실패\n' +
+                         'Expected Total: $' + expectedTotal.toFixed(2) + '\n' +
+                         'Parsed Total: $' + result.totalAmount.toFixed(2) + '\n' +
+                         '차이: $' + subtotalDiff.toFixed(2);
+      } else {
+        validationMsg += '\n\n✅ SUBTOTAL-DISCOUNT 검증 통과\n' +
+                         'Expected Total: $' + expectedTotal.toFixed(2) + '\n' +
+                         'Parsed Total: $' + result.totalAmount.toFixed(2);
+      }
+    }
+
     return {
       success: true,
       message: '✅ 파싱 완료!\n\n' +
@@ -661,18 +677,16 @@ function confirmParsing() {
       return;
     }
     
-    // 데이터 복사 (헤더 제외)
-    var targetSheet = getSheet(targetSheetName);
-    var dataRows = data.slice(1); // 헤더 제외
-    
-    for (var i = 0; i < dataRows.length; i++) {
-      targetSheet.appendRow(dataRows[i]);
-    }
-    
-    debugLog('확정 완료', { 
-      vendor: vendor, 
-      targetSheet: targetSheetName, 
-      rows: dataRows.length 
+    // 데이터 복사 (성능 개선: 배치 쓰기 사용)
+    // moveDataToSheet()는 이미 헤더를 제외하고 배치로 쓰기 때문에
+    // data (헤더 포함)를 그대로 전달
+    moveDataToSheet(data, targetSheetName);
+
+    var dataRows = data.slice(1); // 로그용
+    debugLog('확정 완료 (배치)', {
+      vendor: vendor,
+      targetSheet: targetSheetName,
+      rows: dataRows.length
     });
     
     // PARSING 시트 비우기
@@ -988,8 +1002,122 @@ function parseHeaderInfo(lines, data) {
       }
     }
 
+    var summaryTotalFound = false;
+
+    // 2.5 summary block fallback: labels and amounts can be split across lines
+    for (var li = 0; li < Math.min(lines.length, 200); li++) {
+      var summaryLine = lines[li];
+      if (!summaryLine) continue;
+
+      var upperSummary = summaryLine.toUpperCase();
+      if (upperSummary.indexOf('SUBTOTAL') > -1) {
+        var summaryAmounts = [];
+        var hasSummaryLabels = false;
+        var scanLimit = Math.min(li + 20, lines.length);
+
+        for (var sj = li; sj < scanLimit; sj++) {
+          var blockLine = lines[sj];
+          if (!blockLine) continue;
+
+          if (blockLine.match(/TOTAL\s+CARTON|TOTAL\s+LB|AR\s+BALANCE|AGING\s+AS/i)) {
+            break;
+          }
+
+          if (blockLine.match(/SUBTOTAL|DISCOUNT|TAX|COD|S\s*&\s*H|TOTAL/i)) {
+            hasSummaryLabels = true;
+          }
+
+          var blockAmounts = blockLine.match(/-?[\d,]+\.\d{2}/g);
+          if (blockAmounts) {
+            for (var ai = 0; ai < blockAmounts.length; ai++) {
+              summaryAmounts.push(parseAmount(blockAmounts[ai]));
+            }
+          }
+        }
+
+        if (hasSummaryLabels && summaryAmounts.length >= 2) {
+          var subtotalCandidate = summaryAmounts[0];
+          var totalCandidate = summaryAmounts[summaryAmounts.length - 1];
+
+          var pairedAbs = {};
+          for (var pi = 0; pi < summaryAmounts.length; pi++) {
+            var amt = summaryAmounts[pi];
+            var absKey = Math.abs(amt);
+            if (!pairedAbs[absKey]) {
+              pairedAbs[absKey] = { pos: false, neg: false };
+            }
+            if (amt > 0) {
+              pairedAbs[absKey].pos = true;
+            } else if (amt < 0) {
+              pairedAbs[absKey].neg = true;
+            }
+          }
+
+          var pairedValues = {};
+          for (var key in pairedAbs) {
+            if (pairedAbs[key].pos && pairedAbs[key].neg) {
+              pairedValues[key] = true;
+            }
+          }
+
+          var maxPositive = 0;
+          for (var mi = 0; mi < summaryAmounts.length; mi++) {
+            var candidate = summaryAmounts[mi];
+            if (candidate > 0 &&
+                subtotalCandidate > 0 &&
+                candidate < subtotalCandidate &&
+                !pairedValues[Math.abs(candidate)]) {
+              if (candidate > maxPositive) {
+                maxPositive = candidate;
+              }
+            }
+          }
+
+          var derivedTotal = 0;
+          if (subtotalCandidate > 0 && maxPositive > 0) {
+            derivedTotal = Number((subtotalCandidate - maxPositive).toFixed(2));
+          }
+
+          if (subtotalCandidate > 0 && data.subtotal === 0) {
+            data.subtotal = subtotalCandidate;
+            Logger.log('SUBTOTAL parsed from summary block: $' + data.subtotal);
+          }
+
+          var totalSelected = totalCandidate;
+          var totalIsPaired = pairedValues[Math.abs(totalSelected)] === true;
+          var totalTooSmall = subtotalCandidate > 0 &&
+            totalSelected > 0 &&
+            totalSelected < subtotalCandidate * 0.5;
+
+          if (totalSelected <= 0 || totalIsPaired) {
+            totalSelected = 0;
+          }
+
+          if (derivedTotal > 0 && (totalSelected === 0 || totalTooSmall)) {
+            totalSelected = derivedTotal;
+            Logger.log('TOTAL derived from subtotal block: $' + totalSelected);
+
+            if (data.discount === 0 && maxPositive > 0) {
+              data.discount = maxPositive;
+              Logger.log('DISCOUNT inferred from subtotal block: $' + data.discount);
+            }
+          }
+
+          if (totalSelected > 0) {
+            if (Math.abs(data.totalAmount - totalSelected) > 0.01) {
+              data.totalAmount = totalSelected;
+              Logger.log('TOTAL parsed from summary block: $' + data.totalAmount);
+            }
+            summaryTotalFound = true;
+          }
+        }
+
+        break;
+      }
+    }
+
     // 3. 여전히 못 찾으면 SUBTOTAL 근처 찾기 (SUBTOTAL 바로 아래에 TOTAL이 있는 경우)
-    if (!totalMatch || data.totalAmount === 0) {
+    if ((!totalMatch || data.totalAmount === 0) && !summaryTotalFound) {
       Logger.log('SUBTOTAL 근처에서 TOTAL 검색 중...');
 
       // SUBTOTAL 위치 찾기
@@ -1101,1415 +1229,6 @@ function parseLineItems(lines, vendor) {
     debugLog('알 수 없는 vendor', { vendor: vendor });
     return [];
   }
-}
-
-/**
- * 라인 아이템 파싱 (레거시 참조용 - 사용 안 함)
- * CRITICAL: 이 함수는 더 이상 사용되지 않습니다.
- * 새로운 파싱 로직은 Invoice_Parser_SNG.js와 Invoice_Parser_OUTRE.js를 참조하세요.
- */
-function parseLineItems_OLD_REFERENCE(lines, vendor) {
-  var items = [];
-  var lineNo = 1;
-
-  debugLog('라인 아이템 파싱 시작', { vendor: vendor, totalLines: lines.length });
-
-  // OUTRE의 경우: 테이블 헤더를 찾아서 그 이후부터만 파싱
-  var startLine = 0;
-  if (vendor === 'OUTRE') {
-    // 1단계: "QTY SHIPPED" 패턴 찾기
-    for (var i = 0; i < lines.length; i++) {
-      var line = lines[i];
-
-      // "QTY SHIPPED" 또는 "QTY" + "SHIPPED" 패턴
-      if (line.match(/QTY\s+SHIPPED/i) || line.match(/QTY.*SHIPPED/i) ||
-          (line.match(/\bQTY\b/i) && i + 1 < lines.length && lines[i + 1].match(/SHIPPED/i))) {
-
-        debugLog('QTY SHIPPED 헤더 후보 발견', { line: i, text: line.substring(0, 50) });
-
-        // 2단계: 근처에 DESCRIPTION, UNIT PRICE 등 확인
-        var foundHeader = false;
-        for (var j = i; j < Math.min(i + 10, lines.length); j++) {
-          if (lines[j].match(/DESCRIPTION|UNIT.*PRICE|DISC.*PRICE|EXT.*PRICE/i)) {
-            foundHeader = true;
-            debugLog('가격/설명 헤더 발견', { line: j, text: lines[j].substring(0, 50) });
-            break;
-          }
-        }
-
-        if (foundHeader) {
-          // 3단계: 헤더 이후에서 실제 제품 라인 찾기
-          // OUTRE는 여러 줄 형식: QTY만 있는 라인을 찾음
-          Logger.log('=== 헤더 발견 후 첫 20줄 검사 시작 (라인 ' + i + ' 이후) ===');
-
-          for (var k = i + 1; k < Math.min(i + 30, lines.length); k++) {
-            var testLine = lines[k].trim();
-
-            Logger.log('  [' + k + '] 길이=' + testLine.length + ' | ' + testLine.substring(0, 100));
-
-            // OUTRE 다중 라인 형식: QTY만 있는 라인 찾기 (1~3자리 숫자만)
-            if (testLine.match(/^\d{1,3}$/)) {
-              var qty = parseInt(testLine);
-
-              Logger.log('    QTY 전용 라인 발견: ' + qty);
-
-              // 수량 범위 검증 (0-700)
-              if (qty >= 0 && qty <= 700) {
-                startLine = k;
-                Logger.log('  ✅ 테이블 시작 라인 확정 (QTY 전용): ' + k);
-                debugLog('OUTRE 테이블 시작 라인 찾음 (다중 라인 형식)', {
-                  headerLine: i,
-                  startLine: startLine,
-                  firstItemQty: qty,
-                  headerText: line.substring(0, 50)
-                });
-                break;
-              }
-            }
-          }
-
-          if (startLine > 0) {
-            break; // 찾았으면 루프 종료
-          }
-        }
-      }
-    }
-
-    // 못 찾았으면 경고 로그
-    if (startLine === 0) {
-      debugLog('⚠️ OUTRE 테이블 시작점을 찾지 못함 - 전체 텍스트에서 파싱 시도');
-    }
-  }
-
-  for (var i = startLine; i < lines.length; i++) {
-    var line = lines[i].trim();
-    if (!line) continue;
-
-    var isItemLine = false;
-    var parts = [];
-
-    if (vendor === 'SNG') {
-      var tabParts = line.split('\t');
-
-      // SNG 인보이스 구조:
-      // PACKED BY는 있을 수도 있고 없을 수도 있음 → 무시!
-      // 대신 [숫자, 숫자, Item Number] 패턴을 찾아서 시작 위치 결정
-      //
-      // 예시 1 (PACKED BY 있음): T75\t6\t6\tSOGBBM3\tDescription\t...
-      //   → startCol = 1 (col1=6, col2=6, col3=SOGBBM3)
-      //
-      // 예시 2 (PACKED BY 없음): 48\t0\tSOHWX18\tDescription\t...
-      //   → startCol = 0 (col0=48, col1=0, col2=SOHWX18)
-
-      var qtyOrderedCol, qtyShippedCol, itemNumberCol;
-
-      // Col 0, 1, 2부터 시작해서 [숫자, 숫자, Item Number] 패턴 찾기
-      for (var startCol = 0; startCol < Math.min(3, tabParts.length - 2); startCol++) {
-        var col0 = tabParts[startCol] ? tabParts[startCol].trim() : '';
-        var col1 = tabParts[startCol + 1] ? tabParts[startCol + 1].trim() : '';
-        var col2 = tabParts[startCol + 2] ? tabParts[startCol + 2].trim() : '';
-
-        // CRITICAL: 가격 라인, 컬러 라인, 혼합 라인 제외
-        // 1. col0이 빈 문자열이면 제외 (가격 라인: "\t4.00\t160.00\t80.00")
-        // 2. col0이 소수점 숫자면 제외 (가격 라인: "3.00\t120.00\t80.00...")
-        // 3. col2가 언더스코어로 시작하면 제외 (컬러 라인: "_ _ _ 1 - 10\t...")
-        // 4. col2에 공백이 있으면 제외 (혼합 라인: "80.00 BLD-CRUSH - 10")
-        // 5. col2에 하이픈+공백+숫자 패턴이 있으면 제외 (컬러 패턴: "BLD-CRUSH - 10")
-
-        if (!col0 || col0.indexOf('.') > -1) {
-          continue; // 가격 라인 제외
-        }
-
-        if (col2.indexOf('_') === 0 || col2.indexOf(' ') > -1 || col2.match(/\-\s*\d+/)) {
-          continue; // 컬러 라인 및 혼합 라인 제외
-        }
-
-        // [숫자, 숫자, Item Number] 패턴 체크
-        if (!isNaN(parseInt(col0)) &&
-            !isNaN(parseInt(col1)) &&
-            col2.match(/^[A-Z][A-Z0-9]+$/)) {
-          qtyOrderedCol = startCol;
-          qtyShippedCol = startCol + 1;
-          itemNumberCol = startCol + 2;
-          break; // 첫 번째 매칭만 사용
-        }
-      }
-
-      if (qtyOrderedCol !== undefined) {
-        var qtyOrdered = tabParts[qtyOrderedCol] ? tabParts[qtyOrderedCol].trim() : '';
-        var qtyShipped = tabParts[qtyShippedCol] ? tabParts[qtyShippedCol].trim() : '';
-        var itemNumber = tabParts[itemNumberCol] ? tabParts[itemNumberCol].trim() : '';
-
-        if (!isNaN(parseInt(qtyOrdered)) &&
-            !isNaN(parseInt(qtyShipped)) &&
-            itemNumber.length > 0 &&
-            itemNumber.match(/^[A-Z][A-Z0-9]+$/)) {
-          isItemLine = true;
-          parts = tabParts;
-          // 컬럼 위치 저장 (PACKED BY 플래그 대신)
-          parts.qtyOrderedCol = qtyOrderedCol;
-          parts.qtyShippedCol = qtyShippedCol;
-          parts.itemNumberCol = itemNumberCol;
-
-          debugLog('SNG 아이템 라인 감지', {
-            startCol: qtyOrderedCol,
-            qtyOrdered: qtyOrdered,
-            qtyShipped: qtyShipped,
-            itemNumber: itemNumber,
-            totalParts: tabParts.length
-          });
-        } else {
-          // 디버깅: 왜 제외되었는지 로그
-          debugLog('SNG 아이템 라인 제외', {
-            qtyOrderedValid: !isNaN(parseInt(qtyOrdered)),
-            qtyShippedValid: !isNaN(parseInt(qtyShipped)),
-            itemNumberLength: itemNumber.length,
-            itemNumberPattern: itemNumber.match(/^[A-Z][A-Z0-9]+$/),
-            line: line.substring(0, 100)
-          });
-        }
-      }
-
-    } else if (vendor === 'OUTRE') {
-      // OUTRE 다중 라인 형식:
-      // Line 1: QTY만 (예: "5")
-      // Line 2: DESCRIPTION (예: "BIG BEAUTIFUL HAIR CLIP-IN- 9PCS - PERUVIAN WAVE 18" - HT")
-      // Line 3: COLORS (예: "CBRN- 2   JBLK- 0 (2)   NBLK- 1 (1)   NBRN- 2")
-      // Line 4-6: 빈 줄들
-      // Line 7: UNIT PRICE (예: "18.00")
-      // Line 8: DISC PRICE (예: "17.00")
-      // Line 9: EXT PRICE (예: "85.00")
-
-      // QTY만 있는 라인 감지 (1~3자리 숫자만)
-      if (line.match(/^\d{1,3}$/)) {
-        var qty = parseInt(line);
-
-        // 수량 범위 검증 (0-700) + Description 검증
-        if (qty >= 0 && qty <= 700 && i + 1 < lines.length) {
-          var nextLine = lines[i + 1].trim();
-
-          // 다음 줄이 유효한 제품 Description인지 확인
-          // 제품명 패턴: 대문자로 시작, 제품 관련 키워드 포함
-          // 긍정 키워드: HAIR, WIG, LACE, WEAVE, CLIP, REMI, BATIK, SUGARPUNCH, X-PRESSION, BEAUTIFUL, MELTED,
-          //              BRAID, CLOSURE, WAVE, CURL, STRAIGHT, BUNDLE, PONYTAIL, TARA, QW, BIG, BOHEMIAN, HD, PERUVIAN, TWIST, FEED
-          // 제외: "COD tag Fee", 메타데이터, 전화번호 등
-          var hasProductKeywords = nextLine.match(/HAIR|WIG|LACE|WEAVE|CLIP|REMI|BATIK|SUGARPUNCH|X-PRESSION|BEAUTIFUL|MELTED|BRAID|CLOSURE|WAVE|CURL|STRAIGHT|BUNDLE|PONYTAIL|TARA|QW|BIG|BOHEMIAN|HD|PERUVIAN|TWIST|FEED|LOOKS|PASSION/i);
-          var hasMetadata = nextLine.match(/\bSHIP\s+TO\b|\bSOLD\s+TO\b|\bWEIGHT\b|\bSUBTOTAL\b|\bRICHMOND\b|\bLLC\b|\bPKWAY\b|\bCOD\b|\bFee\b|\btag\b|\bDATE\s+SHIPPED\b|\bPAGE\b|\bSHIP\s+VIA\b|\bPAYMENT\b|\bTERMS\b/i);
-          var startsWithUpperCase = nextLine.match(/^[A-Z]/);
-
-          // 2개 이상의 연속된 대문자 단어가 있거나 제품 키워드가 있으면 유효
-          var hasMultipleUpperWords = nextLine.match(/[A-Z]{2,}.*[A-Z]{2,}/);
-
-          var isValidDescription = startsWithUpperCase &&
-                                  (hasProductKeywords || hasMultipleUpperWords) &&
-                                  !hasMetadata;
-
-          // 디버깅: 왜 제외되었는지 로그
-          if (!isValidDescription) {
-            Logger.log('  🔍 Description 검증 실패: ' + nextLine.substring(0, 50));
-            Logger.log('    startsWithUpperCase: ' + !!startsWithUpperCase);
-            Logger.log('    hasProductKeywords: ' + !!hasProductKeywords);
-            Logger.log('    hasMultipleUpperWords: ' + !!hasMultipleUpperWords);
-            Logger.log('    hasMetadata: ' + !!hasMetadata);
-            if (hasMetadata) {
-              Logger.log('    매칭된 메타데이터: ' + hasMetadata[0]);
-            }
-          }
-
-          if (isValidDescription) {
-            isItemLine = true;
-            parts = [line]; // QTY만 저장
-          } else {
-            Logger.log('  ⏭️ QTY 후보 제외 (유효한 Description 아님): ' + qty + ' → ' + nextLine.substring(0, 50));
-          }
-        }
-      }
-    }
-
-    if (isItemLine) {
-      debugLog('아이템 라인 감지', { line: i, vendor: vendor, parts: parts.length });
-
-      // CRITICAL: 매 아이템마다 변수 초기화 (이전 아이템 값 재사용 방지)
-      var qtyOrdered = 0;
-      var qtyShipped = 0;
-      var itemId = '';
-      var description = ''; // ← CRITICAL: 여기서 초기화되지만 아래에서 재할당 안 되면 빈 문자열 유지
-      var descriptionBeforeCleanup = ''; // 원본 Description (cleanup 전)
-      var unitPrice = 0;
-      var extPrice = 0;
-
-      if (vendor === 'SNG') {
-        // PACKED BY 무시 - 저장된 컬럼 위치 사용
-        var qtyOrderedCol = parts.qtyOrderedCol;
-        var qtyShippedCol = parts.qtyShippedCol;
-        var itemNumberCol = parts.itemNumberCol;
-
-        // CRITICAL: 컬럼 위치가 제대로 저장되었는지 확인
-        if (qtyOrderedCol === undefined || qtyShippedCol === undefined || itemNumberCol === undefined) {
-          debugLog('⚠️ SNG 컬럼 위치 정보 없음, 아이템 스킵', {
-            line: i,
-            parts: parts.length,
-            qtyOrderedCol: qtyOrderedCol,
-            qtyShippedCol: qtyShippedCol,
-            itemNumberCol: itemNumberCol
-          });
-          continue; // 다음 라인으로
-        }
-
-        // 안전한 배열 접근을 위한 헬퍼 함수
-        var getPartSafely = function(index) {
-          return parts[index] !== undefined ? parts[index].trim() : '';
-        };
-
-        qtyOrdered = parseInt(getPartSafely(qtyOrderedCol)) || 0;
-        qtyShipped = parseInt(getPartSafely(qtyShippedCol)) || 0;
-        itemId = getPartSafely(itemNumberCol);
-
-        // Description (Item Number 다음 컬럼)
-        description = getPartSafely(itemNumberCol + 1);
-
-        // CRITICAL: Description이 비어있으면 경고
-        if (!description || description.trim() === '') {
-          debugLog('⚠️ Description 비어있음', {
-            itemId: itemId,
-            itemNumberCol: itemNumberCol,
-            descriptionCol: itemNumberCol + 1,
-            partsLength: parts.length,
-            rawPart: parts[itemNumberCol + 1]
-          });
-        }
-
-        // 첫 번째 라인에서 Unit Price와 Ext Price (Description 다음 컬럼들)
-        unitPrice = parseAmount(getPartSafely(itemNumberCol + 2));
-        extPrice = parseAmount(getPartSafely(itemNumberCol + 3));
-
-        debugLog('SNG 컬럼 위치 확인', {
-          itemId: itemId,
-          qtyOrderedCol: qtyOrderedCol,
-          qtyShippedCol: qtyShippedCol,
-          itemNumberCol: itemNumberCol,
-          qtyOrdered: qtyOrdered,
-          qtyShipped: qtyShipped
-        });
-
-        debugLog('SNG 1행 파싱', {
-          description: description,
-          unitPrice: unitPrice,
-          extPrice: extPrice
-        });
-
-        // 두 번째 라인 확인 (할인된 가격)
-        var priceLineIndex = i + 1;
-        if (i + 1 < lines.length) {
-          var nextLine = lines[i + 1];
-          var nextParts = nextLine.split('\t');
-
-          // 두 번째 라인이 "\t4.00\t160.00\t80.00" 형식인지 확인
-          if (nextParts.length >= 4 &&
-              nextParts[0].trim() === '' &&
-              !isNaN(parseFloat(nextParts[1])) &&
-              !isNaN(parseFloat(nextParts[2])) &&
-              !isNaN(parseFloat(nextParts[3]))) {
-
-            // 할인된 가격 사용
-            unitPrice = parseAmount(nextParts[1]);
-            extPrice = parseAmount(nextParts[2]);
-
-            debugLog('SNG 2행 가격 적용', {
-              unitPrice: unitPrice,
-              extPrice: extPrice
-            });
-          }
-        }
-
-        // 두 번째 라인(가격 라인)부터 컬러 라인 검색
-        // CRITICAL: 가격 라인에도 컬러가 포함될 수 있음
-        // 예: "3.00  120.00  80.00 BLD-CRUSH - 10  BRN-CRUSH - 10"
-        var colorLinesArray = [];
-
-        // CRITICAL FIX: 컬러 검색 시작 위치 보정
-        // 문제: priceLineIndex부터 검색하면 이전 아이템의 컬러 라인이 혼입될 수 있음
-        // 해결: 현재 아이템 라인(i) 이후부터만 검색 (최소 i+2부터)
-        // - i: 현재 아이템 라인
-        // - i+1: 가격 라인 (있을 수도 있고 없을 수도 있음)
-        // - i+2: 첫 번째 컬러 라인 시작 가능 위치
-        var colorSearchStart = Math.max(priceLineIndex, i + 2);
-
-        Logger.log('=== SNG 컬러 라인 검색 시작 ===');
-        Logger.log('    현재 아이템 라인: ' + i);
-        Logger.log('    가격 라인 인덱스: ' + priceLineIndex);
-        Logger.log('    컬러 검색 시작: ' + colorSearchStart + ' (i+2와 priceLineIndex 중 큰 값)');
-
-        // CRITICAL: 헤더 구간 건너뛰기
-        // 인보이스 중간에 헤더가 다시 나타나는 경우 (페이지 넘어갈 때)
-        // INVOICE DATE부터 시작해서 "List Extended", "Your Extended", "Discounted Amount" 같은
-        // 헤더 마지막 라인까지 건너뜀
-        var inHeaderSection = false;
-        var headerEndPatterns = /List Extended|Your Extended|Discounted Amount|ITEM NUMBER|Description/i;
-        var lastHeaderLineIndex = -1;
-
-        // CRITICAL: 검색 범위를 30 → 80으로 확장
-        // 이유: 헤더 구간(15-20줄)과 컬러 라인(컬러 수에 따라 가변)을 모두 포함하기 위해
-        for (var k = colorSearchStart; k < Math.min(colorSearchStart + 80, lines.length); k++) {
-          var colorLine = lines[k].trim();
-
-          // 빈 줄은 로그만 남기고 건너뜀 (헤더 끝 감지에 사용할 수 있음)
-          if (!colorLine) {
-            // 헤더 구간 중이고, 마지막 헤더 키워드 이후 빈 줄이면 헤더 종료로 간주
-            if (inHeaderSection && lastHeaderLineIndex > -1 && (k - lastHeaderLineIndex) <= 3) {
-              Logger.log('    📋 헤더 구간 종료 감지 (빈 줄): Line ' + k);
-              inHeaderSection = false;
-              lastHeaderLineIndex = -1;
-            }
-            continue;
-          }
-
-          Logger.log('  [' + k + '] ' + colorLine.substring(0, 80));
-
-          // 헤더 시작 감지: INVOICE DATE, DUE DATE, SHIP VIA 등
-          if (colorLine.match(/INVOICE DATE|DUE DATE|SHIP VIA|ORDER DATE|SALESPERSON|TERMS|C\.O\.D|PACKED BY|QTY ORDERED|QTY SHIPPED/i)) {
-            inHeaderSection = true;
-            lastHeaderLineIndex = k;
-            Logger.log('    📋 헤더 구간 시작 감지');
-            continue;
-          }
-
-          // 헤더 끝 감지: List Extended, Your Extended, Discounted Amount (기존 패턴)
-          if (inHeaderSection && colorLine.match(headerEndPatterns)) {
-            Logger.log('    📋 헤더 구간 종료 감지 (패턴 매칭): ' + colorLine.substring(0, 50));
-            inHeaderSection = false;
-            lastHeaderLineIndex = -1;
-            continue;
-          }
-
-          // CRITICAL: 헤더 구간 중인데 아이템 라인이 나타나면 헤더 종료로 간주
-          // 이유: 헤더 끝 패턴이 매칭되지 않는 경우에도 데이터 라인이 시작되면 헤더는 끝난 것
-          if (inHeaderSection && colorLine.match(/^[A-Z]\d+\t/)) {
-            Logger.log('    📋 헤더 구간 종료 감지 (아이템 라인 발견): ' + colorLine.substring(0, 50));
-            inHeaderSection = false;
-            lastHeaderLineIndex = -1;
-            // 여기서 break하지 않음 - 이 라인이 다음 아이템인지 아래에서 체크
-          }
-
-          // 헤더 구간 중이면 건너뜀
-          if (inHeaderSection) {
-            Logger.log('    ⏭️ 헤더 구간 내부, 건너뜀: ' + colorLine.substring(0, 50));
-            lastHeaderLineIndex = k; // 마지막 헤더 라인 업데이트
-            continue;
-          }
-
-          // 다음 아이템 라인을 만나면 중단 (T## 형식으로 시작)
-          if (colorLine.match(/^[A-Z]\d+\t/)) {
-            Logger.log('    ✋ 다음 아이템 라인 발견, 컬러 검색 중단');
-            break;
-          }
-
-          // 컬러 패턴 확인: "NATURAL - 1", "1B - 2", "DOVE-GREY - 3" 등
-          // 여러 컬러가 한 줄에 있을 수 있음: "1 - 0 (2)   1B - 0 (2)   2 - 0 (2)   4 - 2"
-          // 언더스코어 포함 패턴: "_ _ _ T30 _ _ _ - 10", "_ _ _ _ _ BLONDE _ _ _ _ _ - 0 (10)"
-
-          // CRITICAL: 패턴 매칭 전에 언더스코어를 공백으로 정규화
-          // 이유: "_ _ _ T30 _ _ _ - 10" → "T30 - 10"로 변환하여 표준 패턴 매칭
-          var normalizedLine = colorLine.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
-
-          var hasStandardColorPattern = normalizedLine.match(/[A-Z0-9\-\/]+\s*-\s*\d+/);
-
-          if (hasStandardColorPattern) {
-            // CRITICAL: 원본 라인(언더스코어 포함)을 저장 - parseSNGColorLines에서 처리
-            colorLinesArray.push(colorLine);
-            Logger.log('    ✓ 컬러 라인 수집: ' + colorLine.substring(0, 60));
-            Logger.log('      (정규화: ' + normalizedLine.substring(0, 60) + ')');
-          } else {
-            Logger.log('    ⏭️ 컬러 패턴 불일치, 건너뜀: ' + normalizedLine.substring(0, 60));
-          }
-        }
-
-        Logger.log('총 ' + colorLinesArray.length + '개 컬러 라인 수집됨');
-
-        // 컬러 라인이 있으면 parseSNGColorLines로 파싱하여 개별 아이템 생성
-        if (colorLinesArray.length > 0) {
-          var colorData = parseSNGColorLines(colorLinesArray, description);
-
-          debugLog('SNG 컬러 파싱 결과', { count: colorData.length, data: colorData });
-
-          if (colorData.length > 0) {
-            var totalShipped = 0;
-            for (var m = 0; m < colorData.length; m++) {
-              totalShipped += colorData[m].shipped;
-            }
-
-            debugLog('SNG 총 shipped 수량', { total: totalShipped, original: qtyShipped });
-
-            for (var m = 0; m < colorData.length; m++) {
-              var cd = colorData[m];
-
-              var itemExtPrice = 0;
-              if (totalShipped > 0) {
-                itemExtPrice = Number((extPrice * (cd.shipped / totalShipped)).toFixed(2));
-              }
-
-              // ExtPrice 검증: qtyShipped × unitPrice = extPrice
-              var calculatedExtPrice = Number((cd.shipped * unitPrice).toFixed(2));
-              var priceDiff = Math.abs(itemExtPrice - calculatedExtPrice);
-
-              var memoText = cd.backordered > 0 ? 'Backordered: ' + cd.backordered : '';
-
-              // 차이가 $0.50 이상이면 메모에 표시
-              if (priceDiff >= 0.50) {
-                debugLog('⚠️ SNG ExtPrice 불일치', {
-                  itemId: itemId,
-                  color: cd.color,
-                  calculated: calculatedExtPrice,
-                  parsed: itemExtPrice,
-                  quantity: cd.shipped,
-                  unitPrice: unitPrice,
-                  difference: priceDiff
-                });
-
-                if (memoText) {
-                  memoText += ' | ExtPrice 차이: $' + priceDiff.toFixed(2);
-                } else {
-                  memoText = 'ExtPrice 차이: $' + priceDiff.toFixed(2);
-                }
-              }
-
-              var item = {
-                lineNo: lineNo++,
-                itemId: itemId,
-                upc: '',
-                description: description,
-                brand: CONFIG.INVOICE.BRANDS[vendor],
-                color: cd.color,
-                sizeLength: '',
-                qtyOrdered: cd.shipped + cd.backordered,
-                qtyShipped: cd.shipped,
-                unitPrice: unitPrice,
-                extPrice: itemExtPrice,
-                memo: memoText
-              };
-
-              items.push(item);
-
-              debugLog('SNG 컬러별 아이템 추가', item);
-            }
-
-            continue; // 다음 아이템으로
-          }
-        }
-
-        // 컬러 라인이 없으면 단일 아이템으로 추가
-        var item = {
-          lineNo: lineNo++,
-          itemId: itemId,
-          upc: '',
-          description: description,
-          brand: CONFIG.INVOICE.BRANDS[vendor],
-          color: '',
-          sizeLength: '',
-          qtyOrdered: qtyOrdered,
-          qtyShipped: qtyShipped,
-          unitPrice: unitPrice,
-          extPrice: extPrice,
-          memo: colorLinesArray.length === 0 ? '⚠️ 컬러 정보 찾을 수 없음' : ''
-        };
-
-        items.push(item);
-
-        debugLog('SNG 단일 아이템 추가', item);
-
-        // CRITICAL: SNG 처리 완료 → 다음 아이템으로 (OUTRE 로직 및 다음 라인 검색 스킵)
-        continue;
-
-      } else if (vendor === 'OUTRE') {
-        // OUTRE 다중 라인 파싱
-        // parts[0] = QTY (라인 i)
-        // 다음 라인들: DESCRIPTION (1-2줄), COLORS (다중 줄 가능), PRICES (3줄)
-
-        qtyShipped = parseInt(parts[0]) || 0;
-        qtyOrdered = qtyShipped;
-        itemId = '';
-
-        Logger.log('=== OUTRE 다중 라인 파싱 시작 (라인 ' + i + ', QTY=' + qtyShipped + ') ===');
-
-        // 다음 15줄 안에서 DESCRIPTION, COLORS, PRICES 찾기
-        var descriptionLines = [];
-        var colorLinesArray = []; // 여러 줄 컬러 지원
-        var priceLines = [];
-        var foundFirstColor = false; // 첫 컬러 라인 발견 플래그
-
-        for (var j = i + 1; j < Math.min(i + 15, lines.length); j++) {
-          var nextLine = lines[j].trim();
-
-          Logger.log('  [' + j + '] ' + nextLine.substring(0, 80));
-
-          // 빈 줄 건너뛰기
-          if (!nextLine) continue;
-
-          // CRITICAL: 가격을 모두 찾았으면 즉시 종료 (최우선 체크)
-          if (priceLines.length >= 3) {
-            Logger.log('    ✅ 가격 3개 수집 완료, 즉시 파싱 종료');
-            break;
-          }
-
-          // 다음 아이템 라인을 만나면 중단 (QTY만 있는 라인 + 뒤에 Description이 와야 함)
-          if (nextLine.match(/^\d{1,3}$/)) {
-            var possibleQty = parseInt(nextLine);
-            // 수량 범위 검증 + 다음 줄이 Description인지 확인
-            if (possibleQty >= 0 && possibleQty <= 700 && j + 1 < lines.length) {
-              var nextNextLine = lines[j + 1].trim();
-
-              // QTY 검증 로직과 동일하게 적용
-              var hasProductKeywords = nextNextLine.match(/HAIR|WIG|LACE|WEAVE|CLIP|REMI|BATIK|SUGARPUNCH|X-PRESSION|BEAUTIFUL|MELTED|BRAID|CLOSURE|WAVE|CURL|STRAIGHT|BUNDLE|PONYTAIL|TARA|QW|BIG|BOHEMIAN|HD|PERUVIAN|TWIST|FEED|LOOKS|PASSION/i);
-              var hasMetadata = nextNextLine.match(/\bSHIP\s+TO\b|\bSOLD\s+TO\b|\bWEIGHT\b|\bSUBTOTAL\b|\bRICHMOND\b|\bLLC\b|\bPKWAY\b|\bCOD\b|\bFee\b|\btag\b|\bDATE\s+SHIPPED\b|\bPAGE\b|\bSHIP\s+VIA\b|\bPAYMENT\b|\bTERMS\b|\bSALES\b|\bTOTAL\b/i);
-              var startsWithUpperCase = nextNextLine.match(/^[A-Z]/);
-              var hasMultipleUpperWords = nextNextLine.match(/[A-Z]{2,}.*[A-Z]{2,}/);
-
-              var isValidDescription = startsWithUpperCase &&
-                                      (hasProductKeywords || hasMultipleUpperWords) &&
-                                      !hasMetadata;
-
-              if (isValidDescription) {
-                Logger.log('  ✋ 다음 아이템 라인 발견 (QTY + Description), 중단');
-                break;
-              }
-            }
-            // 그 외 단순 숫자는 넘어감 (컬러 라인의 일부일 수 있음)
-          }
-
-          // 소수점 2자리 금액 패턴 (18.00, 17.00, 85.00 등)
-          if (nextLine.match(/^[\d,]+\.\d{2}$/)) {
-            priceLines.push(parseAmount(nextLine));
-            Logger.log('    ✓ 가격 라인: $' + priceLines[priceLines.length - 1]);
-            // 가격 3개 수집 완료 시 즉시 루프 종료
-            if (priceLines.length >= 3) {
-              Logger.log('    ✅ 가격 3개 수집 완료 (별도 라인), 즉시 파싱 종료');
-              break;
-            }
-            continue;
-          }
-
-          // 메타데이터 필터링 확장 (SHIP TO, SOLD TO, WEIGHT, 전화번호, 주소 등)
-          if (nextLine.match(/SHIP\s+TO|SOLD\s+TO|WEIGHT\(S\)|SUBTOTAL|RICHMOND|LLC|PKWAY|DATE\s+SHIPPED|P\.O\.|SHIP\s+VIA|PAYMENT|TERMS|SHIPPING|Sales\s+Rep|PAGE|METHOD|Free\s+Shipment/i)) {
-            Logger.log('    ⏭️ 메타데이터 라인 건너뜀: ' + nextLine.substring(0, 50));
-            continue;
-          }
-
-          // 전화번호 패턴 필터링 (346/843-2709, 123-456-7890 등)
-          if (nextLine.match(/^\d{3}[\/\-]\d{3}[\/\-]\d{4}$/)) {
-            Logger.log('    ⏭️ 전화번호 라인 건너뜀: ' + nextLine.substring(0, 50));
-            continue;
-          }
-
-          // 주소 패턴 필터링 (숫자로 시작하는 주소, "US", "TX" 등)
-          if (nextLine.match(/^\d+\s+[A-Z].*(?:PKWAY|BLVD|AVE|ST|RD|DR)/i) || nextLine.match(/^US$/) || nextLine.match(/^[A-Z]{2}\s*$/)) {
-            Logger.log('    ⏭️ 주소 라인 건너뜀: ' + nextLine.substring(0, 50));
-            continue;
-          }
-
-          // Description 수집 플래그 체크 (컬러 발견 전까지만, 최대 3줄)
-          var isDescriptionCandidate = false;
-          if (!foundFirstColor && descriptionLines.length < 3) {
-            // CRITICAL: 바로 이전 줄이 QTY 전용 라인(숫자만)이면, 현재 줄은 다음 아이템의 Description
-            // 현재 아이템의 Description에 추가하면 안 됨!
-            var isPreviousLineQty = (j >= i + 2) && lines[j - 1].trim().match(/^\d{1,3}$/);
-
-            if (!isPreviousLineQty) {
-              // Description은 제품명 패턴이어야 함
-              var isDescriptionLine = nextLine.match(/^[A-Z]/) &&
-                                     !nextLine.match(/^\d+$/) &&
-                                     !nextLine.match(/SHIP\s+TO|SOLD\s+TO|WEIGHT|SUBTOTAL|RICHMOND|LLC|PKWAY|COD|\bFee\b|tag|DATE\s+SHIPPED|PAGE|SHIP\s+VIA|PAYMENT|TERMS|SALES|TOTAL|US$/i);
-
-              // 또는 인치 표시만 있는 라인 (예: '10" 12" 14"')
-              var isInchLine = nextLine.match(/^\d+["″'']/);
-
-              // 1-2-3 스타일 또는 인치 리스트는 description으로 처리
-              var hasThreeNumberPattern = nextLine.match(/\b\d+-\d+-\d+\b/);
-              var hasMultipleInches = nextLine.match(/\d+["″'']\s+\d+["″'']/); // "10" 12" 같은 패턴
-
-              // CRITICAL: 가격이 포함된 라인은 Description 후보에서 제외
-              // 예: "NA- 2   NBLK- 2   	19.50	17.00	68.00"
-              var hasPrices = nextLine.match(/\d+\.\d{2}/);
-
-              // 디버깅 로그 추가
-              if (j === i + 1) {
-                Logger.log('    🔍 첫 Description 후보 검증: ' + nextLine.substring(0, 50));
-
-                var startsWithUpper = nextLine.match(/^[A-Z]/);
-                var notOnlyDigits = !nextLine.match(/^\d+$/);
-                var metadataMatch = nextLine.match(/SHIP\s+TO|SOLD\s+TO|WEIGHT|SUBTOTAL|RICHMOND|LLC|PKWAY|COD|\bFee\b|tag|DATE\s+SHIPPED|PAGE|SHIP\s+VIA|PAYMENT|TERMS|SALES|TOTAL|US$/i);
-
-                Logger.log('      startsWithUpper: ' + !!startsWithUpper);
-                Logger.log('      notOnlyDigits: ' + !!notOnlyDigits);
-                Logger.log('      metadataMatch: ' + (metadataMatch ? metadataMatch[0] : 'null'));
-                Logger.log('      isDescriptionLine: ' + !!isDescriptionLine);
-                Logger.log('      isInchLine: ' + !!isInchLine);
-                Logger.log('      hasThreeNumberPattern: ' + !!hasThreeNumberPattern);
-                Logger.log('      hasMultipleInches: ' + !!hasMultipleInches);
-                Logger.log('      hasPrices: ' + !!hasPrices);
-              }
-
-              if ((isDescriptionLine || isInchLine || hasThreeNumberPattern || hasMultipleInches) && !hasPrices) {
-                isDescriptionCandidate = true;
-              }
-            } else {
-              Logger.log('    ⏭️ 이전 줄이 QTY, 다음 아이템의 Description으로 판단: ' + nextLine.substring(0, 50));
-            }
-          } else if (!foundFirstColor && descriptionLines.length >= 3) {
-            Logger.log('    ⏭️ Description 3줄 도달, 추가 건너뜀: ' + nextLine.substring(0, 50));
-          }
-
-          // 숫자만 있는 라인 건너뛰기 (예: "265.00", "2387257")
-          // 단, 컬러 라인의 연속일 수 있으므로 문맥 확인
-          if (nextLine.match(/^[\d\s.,]+$/) && !foundFirstColor) {
-            Logger.log('    ⏭️ 숫자 전용 라인 건너뜀 (컬러 전): ' + nextLine.substring(0, 50));
-            continue;
-          }
-
-          // 컬러 패턴 매치 (일반적인 "COLOR- QTY" 형식)
-          // 단, Description의 일부 (예: '18" - HT')는 제외
-          //
-          // 실제 컬러 라인 패턴:
-          //   ✅ "1B- 2", "NA- 2", "NBLK- 2" (짧은 컬러)
-          //   ✅ "DRFFCARMCH- 1", "M950/425/350/130S- 2" (긴 컬러, 최대 16글자)
-          //   ❌ "REMI TARA 1-2-3" (Description + 숫자 패턴)
-          //   ❌ "SUGARPUNCH - 4X4 HD..." (Description)
-          //   ❌ '18" - HT' (인치 뒤 하이픈)
-
-          var hasColorPattern = nextLine.match(/[A-Z0-9\-\/]+\s*-\s*\d+/);
-          var isInchPattern = nextLine.match(/\d+["″'']\s*-/); // 인치 뒤 하이픈 (18" - HT)
-
-          // Description 블랙리스트 (컬러가 아닌 제품명)
-          // CRITICAL: 블랙리스트는 "컬러 라인처럼 보이지만 Description인 경우"를 걸러내기 위한 것
-          // Description 수집 단계에서는 적용하지 않고, 컬러 라인 판별 시에만 사용
-          var DESCRIPTION_BLACKLIST = [
-            'SUGARPUNCH', 'HONEYPUNCH', 'REMI TARA', 'BATIK', 'X-PRESSION',
-            'BEAUTIFUL HAIR', 'MELTED', 'SWOOP', 'PERFECT HAIR LINE',
-            'LACE FRONT', 'LACE CLOSURE', 'HD LACE', 'BOHEMIAN', 'PERUVIAN',
-            'UNPROCESSED', 'CLIP-IN', 'PONYTAIL', 'BUNDLE', 'WEAVE', 'WAVE',
-            'CURL', 'STRAIGHT', 'BODY WAVE', 'BIG BEAUTIFUL', 'HD BOHEMIAN'
-          ];
-
-          var hasBlacklistedWord = false;
-          var upperLine = nextLine.toUpperCase();
-
-          // CRITICAL: 블랙리스트 체크는 컬러 패턴이 있을 때만 적용
-          // 컬러 패턴이 없으면 어차피 컬러 라인이 아니므로 체크할 필요 없음
-          if (hasColorPattern) {
-            for (var bi = 0; bi < DESCRIPTION_BLACKLIST.length; bi++) {
-              if (upperLine.indexOf(DESCRIPTION_BLACKLIST[bi]) > -1) {
-                hasBlacklistedWord = true;
-                Logger.log('    ⛔ 블랙리스트 매칭 (컬러 패턴 제외): "' + DESCRIPTION_BLACKLIST[bi] + '" in "' + nextLine.substring(0, 50) + '"');
-                break;
-              }
-            }
-          }
-
-          var isColorLine = hasColorPattern && !isInchPattern && !hasBlacklistedWord;
-
-          // foundFirstColor 플래그로 연속 컬러 라인 허용
-          if (foundFirstColor && hasColorPattern && !isInchPattern && !hasBlacklistedWord) {
-            isColorLine = true;
-          }
-
-          // CRITICAL: Description 후보 처리
-          // - Description 후보이면서 컬러 라인이 아닌 경우: Description으로 추가하고 continue
-          // - Description 후보이면서 컬러 라인인 경우: Description으로 추가하되 continue 하지 않음 (컬러 처리로 진행)
-          // - 예외: 블랙리스트가 있어도 괄호 컬러 패턴 (P)COLOR- QTY가 있으면 컬러 라인으로 처리
-          var hasParenColorPattern = nextLine.match(/\([A-Z]\)[A-Z0-9\-\/]+\s*-\s*\d+/);
-
-          if (isDescriptionCandidate && !isColorLine && !hasParenColorPattern) {
-            descriptionLines.push(nextLine);
-            Logger.log('    ✓ Description 라인 추가 (' + descriptionLines.length + '/3): ' + nextLine.substring(0, 50));
-            continue; // 다음 줄로 이동
-          } else if (isDescriptionCandidate && (isColorLine || hasParenColorPattern)) {
-            descriptionLines.push(nextLine);
-            Logger.log('    ✓ Description 라인 추가 (컬러 포함, 컬러 처리 계속): ' + nextLine.substring(0, 50));
-            // continue 하지 않음 - 아래 컬러 처리로 진행
-            // hasParenColorPattern이 있으면 isColorLine을 강제로 true로 설정
-            if (hasParenColorPattern) {
-              isColorLine = true;
-              Logger.log('    ✅ 괄호 컬러 패턴 발견, 블랙리스트 무시하고 컬러 라인으로 처리');
-            }
-          } else if (isDescriptionCandidate) {
-            Logger.log('    ⏭️ Description 후보 제외 (메타데이터 또는 패턴 불일치): ' + nextLine.substring(0, 50));
-          }
-
-          if (isColorLine) {
-            // 컬러 라인에 가격 정보가 포함되어 있는지 확인
-            // 예: "NA- 2   NBLK- 2   	19.50	17.00	68.00"
-            // 마지막에 소수점 2자리 숫자가 3개 있으면 가격으로 추출
-            // 탭 또는 공백으로 구분될 수 있음
-            var pricesInColorLine = nextLine.match(/([\d,]+\.\d{2})[\s\t]+([\d,]+\.\d{2})[\s\t]+([\d,]+\.\d{2})\s*$/);
-
-            if (pricesInColorLine && priceLines.length === 0) {
-              // 가격 추출
-              priceLines.push(parseAmount(pricesInColorLine[1])); // UNIT PRICE
-              priceLines.push(parseAmount(pricesInColorLine[2])); // DISC PRICE
-              priceLines.push(parseAmount(pricesInColorLine[3])); // EXT PRICE
-
-              Logger.log('    ✓ 컬러 라인에서 가격 추출: $' + pricesInColorLine[1] + ', $' + pricesInColorLine[2] + ', $' + pricesInColorLine[3]);
-
-              // 가격 부분을 제거한 컬러 정보만 저장
-              var colorOnly = nextLine.replace(pricesInColorLine[0], '').trim();
-              colorLinesArray.push(colorOnly);
-              Logger.log('    ✓ 컬러 라인 추가 (가격 제거됨): ' + colorOnly.substring(0, 50));
-
-              // CRITICAL: 가격 3개 추출 완료 시 즉시 루프 종료
-              foundFirstColor = true;
-              Logger.log('    ✅ 컬러 라인에서 가격 3개 수집 완료, 즉시 파싱 종료');
-              break;
-            } else {
-              // 가격 없는 일반 컬러 라인
-              colorLinesArray.push(nextLine);
-              Logger.log('    ✓ 컬러 라인 추가: ' + nextLine.substring(0, 50));
-            }
-
-            foundFirstColor = true;
-            continue;
-          }
-
-          // 컬러 연속 라인: "(숫자)" 만 있는 경우 (backordered 정보)
-          // 예: "S1B/BU- 0 \n(1)   "
-          if (foundFirstColor && nextLine.match(/^\((\d+)\)\s*$/)) {
-            // 이전 컬러 라인에 붙여서 추가
-            if (colorLinesArray.length > 0) {
-              var lastColorLine = colorLinesArray[colorLinesArray.length - 1];
-              colorLinesArray[colorLinesArray.length - 1] = lastColorLine + ' ' + nextLine;
-              Logger.log('    ✓ 컬러 라인에 backordered 추가: ' + nextLine.substring(0, 50));
-            }
-            continue;
-          }
-
-          // 컬러 라인 연속 중단 조건: 가격이 나오거나 메타데이터가 나옴
-          if (foundFirstColor && priceLines.length > 0) {
-            Logger.log('    ✋ 컬러 라인 수집 완료 (가격 시작)');
-            // 더 이상 컬러 수집 안 함
-          }
-        }
-
-        // Description 여러 줄을 공백으로 연결
-        description = descriptionLines.join(' ');
-
-        // CRITICAL: Description cleanup 전에 원본 저장
-        // parseOUTREColorLines에서 제거할 때 필요
-        descriptionBeforeCleanup = description;
-
-        // Description 후처리: 컬러 패턴이 섞여 있으면 제거
-        // 예 1: "X-PRESSION BRAID-PRE STRETCHED BRAID 52" 3X (P)M950/425/350/130S- 55"
-        //   → "X-PRESSION BRAID-PRE STRETCHED BRAID 52" 3X"
-        // 예 2: "BIG BEAUTIFUL HAIR CLIP-IN- 9PCS - PERUVIAN WAVE 18" - HT CBRN- 2   JBLK- 0 (2)"
-        //   → "BIG BEAUTIFUL HAIR CLIP-IN- 9PCS - PERUVIAN WAVE 18""
-        // 예 3: "LACE FRONT WIG-PERFECT HAIR LINE13X4-SWOOP SERIES-SWOOP1-HT DRFFAMSS- 1 DRFFCARMCH- 1"
-        //   → "LACE FRONT WIG-PERFECT HAIR LINE13X4-SWOOP SERIES-SWOOP1-HT"
-
-        Logger.log('  📝 Description 정리 전: ' + description);
-
-        // 케이스 1: 괄호로 시작하는 컬러 패턴 제거
-        // "52" 3X (P)M950..." → "52" 3X"
-        var colorInDescMatch = description.match(/^(.+?)(\d+["″''])\s*(\d*X)?\s*\([A-Z0-9\/\-]+\)/i);
-        if (colorInDescMatch) {
-          // 기본: 인치 부분까지
-          var cleanDesc = (colorInDescMatch[1] + colorInDescMatch[2]).trim();
-          // 배수 표시가 있으면 공백 + 배수 추가
-          if (colorInDescMatch[3]) {
-            cleanDesc += ' ' + colorInDescMatch[3];
-          }
-          description = cleanDesc;
-          Logger.log('  🔧 Description 정리 (괄호 컬러 패턴 제거): ' + description);
-        }
-
-        // 케이스 2: 일반 컬러 패턴 제거 (COLOR- QTY 형식)
-        // 연속된 인치 패턴을 모두 유지하고, 컬러 패턴이 시작되기 직전까지만 유지
-        // 예: "10" 12" 14"" → 전체 유지, "18" - HT" → 전체 유지
-        // 예: "10" 12" 14" NA- 2" → "10" 12" 14""만 유지
-
-        // 먼저 인치 패턴이 있는지 확인
-        var hasInch = description.match(/\d+["″'']/);
-        if (hasInch) {
-          // 연속된 인치 패턴 매칭 (공백 또는 공백 없이)
-          // 패턴: 10" 12" 14" 또는 10"12"14" 또는 18" - HT 또는 10" 3X
-          // 마지막 인치 이후에 " - HT" 또는 " 3X" 같은 suffix 허용
-          var allInchesPattern = description.match(/^(.+?)(\d+["″''](?:\s*\d+["″''])*(?:\s*(?:-\s*[A-Z]{2,3}|\d*X))?)/);
-
-          if (allInchesPattern) {
-            var beforeCleanup = description;
-            // 텍스트 부분 + 모든 인치 + suffix
-            description = (allInchesPattern[1] + allInchesPattern[2]).trim();
-
-            if (beforeCleanup !== description) {
-              Logger.log('  🔧 Description 정리 (연속 인치 유지): ' + description);
-            }
-          }
-        } else {
-          // 인치가 없으면 첫 번째 COLOR- QTY 패턴 직전까지만 유지
-          // COLOR- QTY 패턴: 2글자 이상 대문자/숫자/하이픈/슬래시 + " - " + 숫자
-          // 예외: "- HT", "- 9PCS" 같은 단어는 제외 (숫자만 있어야 컬러 패턴)
-          var firstColorPattern = description.match(/^(.+?)\s+([A-Z0-9\/\-]{2,})\s*-\s*\d+/);
-          if (firstColorPattern) {
-            var beforeCleanup = description;
-            description = firstColorPattern[1].trim();
-            if (beforeCleanup !== description) {
-              Logger.log('  🔧 Description 정리 (컬러 패턴 절단): ' + description);
-            }
-          }
-        }
-
-        Logger.log('  📝 최종 Description: ' + description.substring(0, 80));
-
-        // 가격 정보 (최소 3개 필요: UNIT, DISC, EXT)
-        if (priceLines.length >= 3) {
-          var regularPrice = priceLines[0];  // UNIT PRICE (정가)
-          unitPrice = priceLines[1];  // DISC PRICE (할인가) - 이것을 사용
-          extPrice = priceLines[2];   // EXT PRICE
-
-          Logger.log('  ✅ 가격 추출: REGULAR=$' + regularPrice + ', DISC(사용)=$' + unitPrice + ', EXT=$' + extPrice);
-        } else {
-          Logger.log('  ⚠️ 가격 정보 부족: ' + priceLines.length + '개만 발견');
-          unitPrice = 0;
-          extPrice = 0;
-        }
-
-        // 컬러 정보 처리 (다중 라인 결합)
-        if (colorLinesArray.length > 0) {
-          colorLines = colorLinesArray;
-          Logger.log('  ✅ 컬러 라인 설정: ' + colorLinesArray.length + '줄');
-          for (var clIdx = 0; clIdx < colorLinesArray.length; clIdx++) {
-            Logger.log('    [' + clIdx + '] ' + colorLinesArray[clIdx].substring(0, 50));
-          }
-        } else {
-          colorLines = [];
-          Logger.log('  ⚠️ 컬러 라인 없음');
-        }
-      }
-
-      debugLog('아이템 파싱 결과', {
-        itemId: itemId,
-        description: description,
-        qtyOrdered: qtyOrdered,
-        qtyShipped: qtyShipped,
-        unitPrice: unitPrice,
-        extPrice: extPrice
-      });
-
-      // 길이 추출 (예: 10"12"14" → 그대로 유지)
-      // 복수 길이 패턴: 10"12"14" 또는 단일 길이: 18"
-      // 공백으로 나뉘어 있을 수도 있음: "10" 12" 14"" → "10"12"14""로 합침
-      var sizeMatch = description.match(/(\d+["″'']\s*)+/);
-      var size = '';
-      if (sizeMatch) {
-        // 공백 제거하고 합치기
-        size = sizeMatch[0].replace(/\s+/g, '');
-      }
-
-      // OUTRE의 경우 colorLines가 이미 설정되어 있으므로, 조건부로 초기화
-      if (typeof colorLines === 'undefined') {
-        var colorLines = [];
-      }
-      var priceInfo = { unitPrice: unitPrice, extPrice: extPrice }; // OUTRE에서 사용
-      var searchLog = {
-        itemId: itemId,
-        searchRange: Math.min(i + 50, lines.length) - (i + 1),
-        linesChecked: 0,
-        linesFiltered: [],
-        linesCollected: []
-      };
-
-      // OUTRE는 이미 같은 라인에서 모든 정보를 파싱했으므로 다음 라인 검색 건너뛰기
-      if (vendor === 'OUTRE' && colorLines.length > 0) {
-        debugLog('OUTRE: 같은 라인에서 컬러 정보 이미 파싱됨, 다음 라인 검색 건너뛰기', {
-          colorCount: colorLines.length
-        });
-        // 바로 컬러 데이터 처리로 건너뜀
-      } else {
-        // SNG 또는 OUTRE에서 컬러를 못 찾은 경우, 다음 라인 검색
-        for (var j = i + 1; j < Math.min(i + 50, lines.length); j++) {
-        var nextLine = lines[j].trim();
-        searchLog.linesChecked++;
-
-        // 다음 아이템 라인을 만나면 중단
-        if (vendor === 'SNG' && nextLine.match(/^[A-Z]\d+\t/)) {
-          searchLog.linesFiltered.push({ line: j, reason: '다음 아이템 라인', text: nextLine.substring(0, 50) });
-          break;
-        }
-        if (vendor === 'OUTRE' && nextLine.match(/^\d+[\t\s]+[A-Z]/)) {
-          searchLog.linesFiltered.push({ line: j, reason: '다음 아이템 라인', text: nextLine.substring(0, 50) });
-          break;
-        }
-
-        if (!nextLine) continue;
-
-        // 페이지 헤더/푸터 패턴 무시 (확장)
-        if (nextLine.match(/^Page \d+/i) || nextLine.match(/PAGE \d+ of \d+/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: 'Page 번호', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/SHAKE-N-GO/i) || nextLine.match(/OUTRE/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: '회사명', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^INVOICE/i) && nextLine.length < 50) {
-          searchLog.linesFiltered.push({ line: j, reason: 'INVOICE 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^[\-=]+$/)) {
-          searchLog.linesFiltered.push({ line: j, reason: '구분선', text: nextLine });
-          continue;
-        }
-        // OUTRE 특수 헤더
-        if (nextLine.match(/QTY\s+SHIPPED.*DESCRIPTION/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: 'OUTRE 테이블 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/UNIT\s+PRICE.*DISC.*PRICE.*EXT.*PRICE/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: 'OUTRE 가격 헤더', text: nextLine });
-          continue;
-        }
-
-        // 헤더 패턴 필터링 (추가)
-        if (nextLine.match(/^\s*QTY\s+.*\s+ITEM/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: 'QTY...ITEM 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^\s*ORDERED\s+SHIPPED/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: 'ORDERED SHIPPED 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^\s*ITEM\s+NUMBER/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: 'ITEM NUMBER 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^\s*DESCRIPTION/i) && nextLine.length < 50) {
-          searchLog.linesFiltered.push({ line: j, reason: 'DESCRIPTION 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^\s*UNIT\s+PRICE/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: 'UNIT PRICE 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^\s*EXT\.?\s+PRICE/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: 'EXT PRICE 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^\s*ORDER\s+NUMBER/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: 'ORDER NUMBER 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^\s*CUSTOMER/i) && nextLine.length < 50) {
-          searchLog.linesFiltered.push({ line: j, reason: 'CUSTOMER 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^\s*SHIP\s+TO/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: 'SHIP TO 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^\s*SOLD\s+TO/i)) {
-          searchLog.linesFiltered.push({ line: j, reason: 'SOLD TO 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^\s*DATE/i) && nextLine.length < 30) {
-          searchLog.linesFiltered.push({ line: j, reason: 'DATE 헤더', text: nextLine });
-          continue;
-        }
-        if (nextLine.match(/^\s*TERMS/i) && nextLine.length < 30) {
-          searchLog.linesFiltered.push({ line: j, reason: 'TERMS 헤더', text: nextLine });
-          continue;
-        }
-
-        // 언더스코어가 있는 컬러 라인 (주로 SNG)
-        if (nextLine.indexOf('_') > -1) {
-          colorLines.push(nextLine);
-          searchLog.linesCollected.push({ line: j, type: '언더스코어', text: nextLine });
-          continue;
-        }
-
-        // 컬러 패턴 매치
-        if (nextLine.match(/[A-Z0-9\-\/]+\s*-\s*\d+/)) {
-          // OUTRE의 경우, 컬러 라인에서 가격 정보도 추출
-          if (vendor === 'OUTRE') {
-            var priceMatch = nextLine.match(/([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*$/);
-            if (priceMatch) {
-              // 마지막 3개 숫자: Unit Price, Disc Price, Ext Price
-              priceInfo.unitPrice = parseAmount(priceMatch[2]); // Disc Price 사용
-              priceInfo.extPrice = parseAmount(priceMatch[3]);
-
-              debugLog('OUTRE 가격 정보 추출', {
-                unitPrice: priceInfo.unitPrice,
-                extPrice: priceInfo.extPrice,
-                line: nextLine
-              });
-            }
-          }
-
-          colorLines.push(nextLine);
-          searchLog.linesCollected.push({ line: j, type: '컬러 패턴', text: nextLine });
-        } else {
-          // 매치되지 않은 라인도 기록 (디버깅용)
-          if (nextLine.length > 0 && nextLine.length < 100) {
-            searchLog.linesFiltered.push({ line: j, reason: '패턴 불일치', text: nextLine });
-          }
-        }
-        }
-      } // else 블록 종료 (다음 라인 검색)
-
-      // OUTRE의 경우 추출된 가격 정보 적용 (다음 라인에서 찾았을 경우만)
-      if (vendor === 'OUTRE' && priceInfo.unitPrice > 0) {
-        unitPrice = priceInfo.unitPrice;
-        extPrice = priceInfo.extPrice;
-      }
-
-      Logger.log('=== 컬러 라인 검색: ' + itemId + ' ===');
-      Logger.log('검색 범위: ' + searchLog.searchRange + '라인');
-      Logger.log('확인한 라인 수: ' + searchLog.linesChecked);
-      Logger.log('필터링된 라인 수: ' + searchLog.linesFiltered.length);
-      Logger.log('수집된 컬러 라인 수: ' + searchLog.linesCollected.length);
-
-      if (searchLog.linesCollected.length > 0) {
-        Logger.log('수집된 컬러 라인:');
-        for (var logIdx = 0; logIdx < searchLog.linesCollected.length; logIdx++) {
-          Logger.log('  [' + searchLog.linesCollected[logIdx].line + '] ' + searchLog.linesCollected[logIdx].text);
-        }
-      }
-
-      if (searchLog.linesCollected.length === 0 && searchLog.linesFiltered.length > 0) {
-        Logger.log('❌ 컬러 라인을 찾을 수 없음. 필터링된 라인들:');
-        for (var logIdx = 0; logIdx < Math.min(10, searchLog.linesFiltered.length); logIdx++) {
-          Logger.log('  [' + searchLog.linesFiltered[logIdx].line + '] (' + searchLog.linesFiltered[logIdx].reason + ') ' + searchLog.linesFiltered[logIdx].text);
-        }
-      }
-
-      debugLog('컬러 라인 수집', { count: colorLines.length, lines: colorLines });
-
-      if (colorLines.length > 0) {
-        // CRITICAL: parseOUTREColorLines에 원본 Description (cleanup 전)을 전달
-        // colorLines에는 원본 Description 텍스트가 포함되어 있기 때문
-        var colorData = parseOUTREColorLines(colorLines, descriptionBeforeCleanup || description);
-
-        debugLog('컬러 파싱 결과', { count: colorData.length, data: colorData });
-
-        if (colorData.length > 0) {
-          var totalShipped = 0;
-          for (var k = 0; k < colorData.length; k++) {
-            totalShipped += colorData[k].shipped;
-          }
-
-          debugLog('총 shipped 수량', { total: totalShipped, original: qtyShipped });
-
-          for (var k = 0; k < colorData.length; k++) {
-            var cd = colorData[k];
-
-            var itemExtPrice = 0;
-            if (totalShipped > 0) {
-              itemExtPrice = Number((extPrice * (cd.shipped / totalShipped)).toFixed(2));
-            }
-
-            // ExtPrice 검증: qtyShipped × unitPrice = extPrice
-            var calculatedExtPrice = Number((cd.shipped * unitPrice).toFixed(2));
-            var priceDiff = Math.abs(itemExtPrice - calculatedExtPrice);
-
-            var memoText = cd.backordered > 0 ? 'Backordered: ' + cd.backordered : '';
-
-            // 차이가 $0.50 이상이면 메모에 표시
-            if (priceDiff >= 0.50) {
-              debugLog('⚠️ ExtPrice 불일치', {
-                itemId: itemId,
-                color: cd.color,
-                calculated: calculatedExtPrice,
-                parsed: itemExtPrice,
-                quantity: cd.shipped,
-                unitPrice: unitPrice,
-                difference: priceDiff
-              });
-
-              if (memoText) {
-                memoText += ' | ExtPrice 차이: $' + priceDiff.toFixed(2);
-              } else {
-                memoText = 'ExtPrice 차이: $' + priceDiff.toFixed(2);
-              }
-            }
-
-            var item = {
-              lineNo: lineNo++,
-              itemId: itemId,
-              upc: '',
-              description: description,
-              brand: CONFIG.INVOICE.BRANDS[vendor],
-              color: cd.color,
-              sizeLength: size,
-              qtyOrdered: cd.shipped + cd.backordered,
-              qtyShipped: cd.shipped,
-              unitPrice: unitPrice,
-              extPrice: itemExtPrice,
-              memo: memoText
-            };
-
-            items.push(item);
-
-            debugLog('아이템 추가', item);
-          }
-
-          continue;
-        }
-      }
-
-      // 컬러 정보가 없으면 경고하고 메모와 함께 추가
-      debugLog('경고: 컬러 정보 없음', {
-        itemId: itemId,
-        description: description,
-        qtyShipped: qtyShipped,
-        extPrice: extPrice
-      });
-
-      // 컬러 정보를 찾을 수 없어도 반드시 리스트에 포함 (메모로 표시)
-      if (qtyShipped > 0 || extPrice > 0) {
-        // ExtPrice 검증: qtyShipped × unitPrice = extPrice
-        var calculatedExtPrice = Number((qtyShipped * unitPrice).toFixed(2));
-        var priceDiff = Math.abs(extPrice - calculatedExtPrice);
-
-        var memoText = '⚠️ 컬러 정보 찾을 수 없음';
-
-        if (priceDiff > 0.01) {
-          debugLog('⚠️ ExtPrice 불일치 (컬러 없음)', {
-            itemId: itemId,
-            calculated: calculatedExtPrice,
-            parsed: extPrice,
-            quantity: qtyShipped,
-            unitPrice: unitPrice,
-            difference: priceDiff
-          });
-
-          // 계산된 값을 사용하고 메모에 표시
-          extPrice = calculatedExtPrice;
-          memoText += ' | ExtPrice 수정됨';
-        }
-
-        var item = {
-          lineNo: lineNo++,
-          itemId: itemId,
-          upc: '',
-          description: description,
-          brand: CONFIG.INVOICE.BRANDS[vendor],
-          color: '',
-          sizeLength: size,
-          qtyOrdered: qtyOrdered,
-          qtyShipped: qtyShipped,
-          unitPrice: unitPrice,
-          extPrice: extPrice,
-          memo: memoText
-        };
-
-        items.push(item);
-
-        debugLog('컬러 없는 아이템 추가 (메모 표시)', item);
-      }
-    }
-  }
-
-  debugLog('라인 아이템 파싱 완료', { totalItems: items.length });
-
-  return items;
-}
-
-/**
- * OUTRE 컬러 라인 파싱 (레거시 참조용 - 사용 안 함)
- * CRITICAL: 이 함수는 더 이상 사용되지 않습니다.
- * 새로운 파싱 로직은 Invoice_Parser_OUTRE.js의 parseOUTREColorLines()를 참조하세요.
- *
- * @param {Array} colorLines - 컬러 라인 배열
- * @param {string} description - Description 텍스트 (제외용)
- */
-function parseOUTREColorLines_OLD_REFERENCE(colorLines, description) {
-  var colorData = [];
-
-  var fullText = colorLines.join(' ');
-
-  // 언더스코어를 공백으로 변환
-  fullText = fullText.replace(/_+/g, ' ');
-  fullText = fullText.replace(/\s+/g, ' ').trim();
-
-  debugLog('컬러 라인 전처리', { original: colorLines, processed: fullText });
-
-  // CRITICAL: Description 텍스트가 포함되어 있으면 제거
-  // 예: "REMI TARA 1-2-3" → "1-2-3"이 컬러로 인식되는 것을 방지
-  // 예: "SUGARPUNCH - 4X4 HD..." → "SUGARPUNCH - 4"가 컬러로 인식되는 것을 방지
-  if (description) {
-    var descClean = description.trim();
-
-    // 방법 1: 정확히 일치하면 제거 (기존 로직)
-    if (fullText.indexOf(descClean) === 0) {
-      fullText = fullText.substring(descClean.length).trim();
-      debugLog('Description 제거 (정확 매칭)', { removed: descClean, remaining: fullText });
-    } else {
-      // 방법 2: 단어 기반 매칭 (인코딩 차이 대응)
-      // Description의 주요 단어들을 추출 (짧은 단어, 숫자, 따옴표 제외)
-      var descWords = descClean.split(/[\s\-]+/).filter(function(word) {
-        return word.length > 2 && !word.match(/^\d+$/) && !word.match(/^["″'']+$/);
-      });
-
-      if (descWords.length > 0) {
-        // fullText에서 Description의 주요 단어들이 순서대로 나타나는지 확인
-        var wordsToCheck = descWords.slice(0, Math.min(3, descWords.length));
-        var allWordsFound = true;
-        var lastIndex = 0;
-
-        for (var i = 0; i < wordsToCheck.length; i++) {
-          var wordIndex = fullText.indexOf(wordsToCheck[i], lastIndex);
-          if (wordIndex === -1) {
-            allWordsFound = false;
-            break;
-          }
-          lastIndex = wordIndex + wordsToCheck[i].length;
-        }
-
-        if (allWordsFound) {
-          // Description 끝 지점 찾기: 인치 마커 또는 X 패턴까지
-          var descEndMatch = fullText.match(/^.+?(\d+["″'']|X)\s*/);
-          if (descEndMatch) {
-            var removedPart = fullText.substring(0, descEndMatch[0].length);
-            fullText = fullText.substring(descEndMatch[0].length).trim();
-            debugLog('Description 제거 (단어 기반)', {
-              removed: removedPart,
-              remaining: fullText,
-              matchedWords: wordsToCheck
-            });
-          }
-        }
-      }
-    }
-  }
-
-  // OUTRE의 경우: 마지막에 가격 정보가 있을 수 있으므로 제거
-  // 예: "CBRN- 2   JBLK- 0 (2)   NBLK- 1 (1)   NBRN- 2   18.00  17.00  85.00"
-  // 마지막 3개 숫자 패턴 제거: \d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s*$
-  fullText = fullText.replace(/\d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s*$/g, '');
-
-  debugLog('가격 제거 후', { processed: fullText });
-
-  // 개선된 정규식: 숫자, 하이픈, 슬래시 뿐만 아니라 알파벳 텍스트도 매치
-  // 패턴: [컬러명] - [shipped 수량] 또는 [컬러명] - [shipped 수량] (backorder 수량)
-  // 컬러명은 영문자, 숫자, 하이픈, 슬래시 조합 (예: 1, 2, 30, GINGER, BLD-CRUSH, OM27, T30, CBRN, JBLK, NBLK, NBRN)
-  var regex = /([A-Z0-9\-\/]+)\s*-\s*(\d+)\s*(?:\((\d+)\))?/gi;
-  var match;
-
-  while ((match = regex.exec(fullText)) !== null) {
-    var color = match[1].trim();
-    var shipped = parseInt(match[2]) || 0;
-    var backordered = match[3] ? parseInt(match[3]) : 0;
-
-    debugLog('컬러 매치', {
-      color: color,
-      shipped: shipped,
-      backordered: backordered,
-      fullMatch: match[0]
-    });
-
-    if (color && color.length > 0 && (shipped > 0 || backordered > 0)) {
-      colorData.push({
-        color: color,
-        shipped: shipped,
-        backordered: backordered
-      });
-    }
-  }
-
-  return colorData;
-}
-
-/**
- * SNG 컬러 라인 파싱 (레거시 참조용 - 사용 안 함)
- * CRITICAL: 이 함수는 더 이상 사용되지 않습니다.
- * 새로운 파싱 로직은 Invoice_Parser_SNG.js의 parseSNGColorLines()를 참조하세요.
- *
- * @param {Array} colorLines - 컬러 라인 배열
- * @param {string} description - Description 텍스트 (제외용)
- */
-function parseSNGColorLines_OLD_REFERENCE(colorLines, description) {
-  var colorData = [];
-
-  var fullText = colorLines.join(' ');
-
-  // 언더스코어를 공백으로 변환
-  fullText = fullText.replace(/_+/g, ' ');
-  fullText = fullText.replace(/\s+/g, ' ').trim();
-
-  debugLog('SNG 컬러 라인 전처리', { original: colorLines, processed: fullText });
-
-  // CRITICAL: Description 텍스트가 포함되어 있으면 제거
-  // 예: "REMI TARA 1-2-3" → "1-2-3"이 컬러로 인식되는 것을 방지
-  if (description) {
-    var descClean = description.trim();
-
-    // 방법 1: 정확히 일치하면 제거
-    if (fullText.indexOf(descClean) === 0) {
-      fullText = fullText.substring(descClean.length).trim();
-      debugLog('SNG Description 제거 (정확 매칭)', { removed: descClean, remaining: fullText });
-    } else {
-      // 방법 2: 단어 기반 매칭 (인코딩 차이 대응)
-      var descWords = descClean.split(/[\s\-]+/).filter(function(word) {
-        return word.length > 2 && !word.match(/^\d+$/) && !word.match(/^["″'']+$/);
-      });
-
-      if (descWords.length > 0) {
-        var wordsToCheck = descWords.slice(0, Math.min(3, descWords.length));
-        var allWordsFound = true;
-        var lastIndex = 0;
-
-        for (var i = 0; i < wordsToCheck.length; i++) {
-          var wordIndex = fullText.indexOf(wordsToCheck[i], lastIndex);
-          if (wordIndex === -1) {
-            allWordsFound = false;
-            break;
-          }
-          lastIndex = wordIndex + wordsToCheck[i].length;
-        }
-
-        if (allWordsFound) {
-          var descEndMatch = fullText.match(/^.+?(\d+["″'']|X)\s*/);
-          if (descEndMatch) {
-            var removedPart = fullText.substring(0, descEndMatch[0].length);
-            fullText = fullText.substring(descEndMatch[0].length).trim();
-            debugLog('SNG Description 제거 (단어 기반)', {
-              removed: removedPart,
-              remaining: fullText,
-              matchedWords: wordsToCheck
-            });
-          }
-        }
-      }
-    }
-  }
-
-  // SNG의 경우도 마지막에 가격 정보가 있을 수 있으므로 제거
-  fullText = fullText.replace(/\d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s*$/g, '');
-
-  debugLog('SNG 가격 제거 후', { processed: fullText });
-
-  // 컬러 패턴: [컬러명] - [shipped 수량] 또는 [컬러명] - [shipped 수량] (backorder 수량)
-  // 컬러명: 영문자, 숫자, 하이픈, 슬래시 조합 (예: NATURAL, 1B, DOVE-GREY, T30)
-  var regex = /([A-Z0-9\-\/]+)\s*-\s*(\d+)\s*(?:\((\d+)\))?/gi;
-  var match;
-
-  while ((match = regex.exec(fullText)) !== null) {
-    var color = match[1].trim();
-    var shipped = parseInt(match[2]) || 0;
-    var backordered = match[3] ? parseInt(match[3]) : 0;
-
-    debugLog('SNG 컬러 매치', {
-      color: color,
-      shipped: shipped,
-      backordered: backordered,
-      fullMatch: match[0]
-    });
-
-    if (color && color.length > 0 && (shipped > 0 || backordered > 0)) {
-      colorData.push({
-        color: color,
-        shipped: shipped,
-        backordered: backordered
-      });
-    }
-  }
-
-  return colorData;
 }
 
 /**

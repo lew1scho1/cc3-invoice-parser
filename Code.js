@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // CODE.GS - 메인 진입점 및 초기화
 // ============================================================================
 
@@ -28,6 +28,9 @@ function onOpen() {
     .addItem('🔧 초기 설정 (제품 시트 생성)', 'initializeSheets')
     .addItem('📄 인보이스 시트 초기화', 'initializeInvoiceSheets')
     .addSeparator()
+    .addItem('🧾 Upload -> Active DB 생성', 'processUploadToActiveDb')
+    .addItem('Upload/Outre NEW 데이터 비우기', 'clearUploadSheetsData')
+    .addSeparator()
     .addSubMenu(ui.createMenu('📄 인보이스')
       .addItem('📁 폴더 설정', 'setInvoiceFolder')
       .addItem('📄 파싱 시작', 'startParsing')
@@ -43,6 +46,10 @@ function onOpen() {
     .addItem('🎨 컬러 정렬 테스트', 'testColorSorting')
     .addItem('📏 길이 정렬 테스트', 'testInchSorting')
     .addToUi();
+  // Attach additional menus from other scripts (e.g. OUTRE UPC menu)
+  if (typeof addOutreMenu === 'function') {
+    addOutreMenu();
+  }
 }
 
 /**
@@ -56,11 +63,11 @@ function initializeSheets() {
     
     var requiredSheets = [
       {
-        name: 'DB_OUTRE',
+        name: 'Outre Active DB',
         headers: ['ITEM GROUP', 'ITEM NUMBER', 'ITEM NAME', 'COLOR', 'BARCODE']
       },
       {
-        name: 'DB_SNG',
+        name: 'SNG Active DB',
         headers: ['Class', 'Old Item', 'Old Item Code', 'Item', 'Item Code', 'Color', 'Description', 'Barcode']
       },
       {

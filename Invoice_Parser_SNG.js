@@ -18,24 +18,78 @@ var SNG_HEADER_REGEX = /INVOICE DATE|DUE DATE|SHIP VIA|ORDER DATE|SALESPERSON|TE
 var SNG_ITEM_BOUNDARY_REGEX = /^(?:[A-Z]\d{1,3}\s+)?\d{1,3}(?:\s+\d{1,3})?\s*[A-Z][A-Z0-9]+\s+.+?\s*\d+\.\d{2}\s*\d+\.\d{2}\s*$/;
 var SNG_COLOR_SCAN_LIMIT = 160;
 
+// ============================================================================
+// DB 캐시 (전역 변수)
+// ============================================================================
+
+/**
+ * SNG DB 캐시 (전역 변수)
+ * CRITICAL: 배치 파싱 성능 개선을 위해 DB 데이터를 한 번만 로드
+ */
+var SNG_DB_CACHE = null;
+
+/**
+ * SNG DB 캐시 초기화
+ * CRITICAL: parseSNGLineItems() 시작 시 한 번만 호출
+ */
+function initSNGDBCache() {
+  if (SNG_DB_CACHE !== null) {
+    return; // 이미 초기화됨
+  }
+
+  try {
+    var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var dbSheet = ss.getSheetByName(CONFIG.COMPANIES.SNG.dbSheet);
+
+    if (!dbSheet) {
+      Logger.log('⚠️ SNG DB 시트 없음');
+      SNG_DB_CACHE = { error: true };
+      return;
+    }
+
+    debugLog('SNG DB 캐시 생성 시작');
+    var dbMap = buildSNGItemCodeMap(dbSheet);
+
+    SNG_DB_CACHE = {
+      error: false,
+      dbMap: dbMap.itemCodeMap,
+      columnMap: dbMap.columnMap
+    };
+
+    Logger.log('✅ SNG DB 캐시 초기화 완료: ' + Object.keys(dbMap.itemCodeMap).length + '개 항목');
+
+  } catch (error) {
+    Logger.log('❌ SNG DB 캐시 초기화 오류: ' + error.toString());
+    SNG_DB_CACHE = { error: true };
+  }
+}
+
+/**
+ * SNG DB 캐시 리셋
+ * CRITICAL: parseSNGLineItems() 종료 시 호출 (메모리 절약)
+ */
+function resetSNGDBCache() {
+  SNG_DB_CACHE = null;
+}
+
 /**
  * SNG 인보이스 라인 아이템 파싱
  * @param {Array<string>} lines - 인보이스 텍스트 라인 배열
- * @param {Sheet} dbSheet - DB_SNG 시트 (옵션, DB 검증 활성화)
  * @return {Array<Object>} 파싱된 라인 아이템 배열
  */
-function parseSNGLineItems(lines, dbSheet) {
+function parseSNGLineItems(lines) {
   var items = [];
   var lineNo = 1;
 
-  debugLog('SNG 라인 아이템 파싱 시작', { totalLines: lines.length, dbValidation: !!dbSheet });
+  debugLog('SNG 라인 아이템 파싱 시작', { totalLines: lines.length });
 
-  // CRITICAL: DB 검증 활성화 시 배치 최적화 - DB를 한 번만 읽음
+  // CRITICAL: 내부 캐시 사용
+  initSNGDBCache();
+
   var dbMap = null;
-  if (dbSheet) {
-    debugLog('SNG DB Map 생성 시작 (배치 최적화)');
-    dbMap = buildSNGItemCodeMap(dbSheet);
-    debugLog('SNG DB Map 생성 완료', { itemCount: Object.keys(dbMap.itemCodeMap).length });
+  if (SNG_DB_CACHE && !SNG_DB_CACHE.error) {
+    dbMap = SNG_DB_CACHE.dbMap;
+    debugLog('SNG DB 캐시 사용', { itemCount: Object.keys(dbMap).length });
   }
 
   for (var i = 0; i < lines.length; ) {
@@ -110,7 +164,7 @@ function parseSNGLineItems(lines, dbSheet) {
 
         // DB 검증 (dbMap이 제공된 경우만)
         if (dbMap) {
-          item = validateSNGItemWithDB(item, null, dbMap);
+          item = validateSNGItemWithDB(item, dbMap);
         }
 
         items.push(item);
@@ -133,7 +187,7 @@ function parseSNGLineItems(lines, dbSheet) {
 
       // DB 검증 (dbMap이 제공된 경우만)
       if (dbMap) {
-        item = validateSNGItemWithDB(item, null, dbMap);
+        item = validateSNGItemWithDB(item, dbMap);
       }
 
       items.push(item);
@@ -141,6 +195,9 @@ function parseSNGLineItems(lines, dbSheet) {
 
     i = colorScan.nextIndex;
   }
+
+  // CRITICAL: 파싱 완료 후 캐시 리셋 (메모리 절약)
+  resetSNGDBCache();
 
   debugLog('SNG 라인 아이템 파싱 완료', { totalItems: items.length });
 
@@ -533,7 +590,7 @@ function normalizeSNGDescription(desc) {
 }
 
 /**
- * SNG 라인 아이템 DB 검증
+ * SNG 라인 아이템 DB 검증 + UPC 보강 (v2)
  *
  * 규칙:
  * 1. ITEM CODE 정규화 (대문자만)
@@ -543,16 +600,19 @@ function normalizeSNGDescription(desc) {
  *    - DB DESCRIPTION으로 확정
  *    - 파싱 DESCRIPTION과 비교 (정규화 후)
  *    - 불일치 시 경고 로그만 (오류 아님)
- * 5. DB 미존재 시:
+ * 5. UPC 보강 (ITEM CODE + COLOR):
+ *    - 동일 ITEM CODE의 레코드 중 COLOR 매칭
+ *    - 매칭 성공 시 UPC 세팅
+ *    - 매칭 실패 시 UPC 빈 값 유지
+ * 6. DB 미존재 시:
  *    - 파싱 DESCRIPTION 유지
  *    - Memo에 "⚠️ DB 미등록 제품" 추가
  *
  * @param {Object} item - 파싱된 라인 아이템
- * @param {Sheet} dbSheet - DB 시트 (DB_SNG) - 단일 검색 시 사용
- * @param {Object} dbMap - DB Map (배치 검색 시 사용) - buildSNGItemCodeMap() 결과
+ * @param {Object} dbMap - DB Map (배치 검색 시 사용) - 캐시에서 가져온 맵
  * @return {Object} 검증 완료된 라인 아이템
  */
-function validateSNGItemWithDB(item, dbSheet, dbMap) {
+function validateSNGItemWithDB(item, dbMap) {
   // 1. ITEM CODE 정규화 (대문자만)
   var normalizedItemId = item.itemId.toUpperCase();
 
@@ -563,28 +623,24 @@ function validateSNGItemWithDB(item, dbSheet, dbMap) {
     return item; // DB 조회 생략, 파싱값 유지
   }
 
-  // 3. DB 조회 (Map 우선, 없으면 직접 검색)
-  var dbRecord = null;
+  // 3. DB 조회 (dbMap은 배열 구조: {ITEMCODE: [{description, color, barcode}, ...]})
+  var dbRecords = null;
 
-  if (dbMap && dbMap.itemCodeMap) {
-    // 배치 검색: Map에서 직접 조회 (O(1))
-    dbRecord = dbMap.itemCodeMap[normalizedItemId];
-  } else if (dbSheet) {
-    // 단일 검색: DB 직접 검색 (O(n))
-    var dbRecords = searchSNGDatabase(dbSheet, normalizedItemId);
-    dbRecord = (dbRecords && dbRecords.length > 0) ? dbRecords[0] : null;
+  if (dbMap) {
+    // 배치 검색: 캐시에서 직접 조회 (O(1))
+    dbRecords = dbMap[normalizedItemId];
   }
 
   // 4a. DB 미존재
-  if (!dbRecord) {
+  if (!dbRecords || dbRecords.length === 0) {
     Logger.log('⚠️ DB 미등록 제품: ' + normalizedItemId);
     Logger.log('  Parsed DESCRIPTION: ' + item.description);
     item.memo = (item.memo ? item.memo + ' / ' : '') + '⚠️ DB 미등록 제품';
     return item; // 파싱값 유지
   }
 
-  // 4b. DB 매칭 성공
-  var dbDescription = dbRecord.description || '';
+  // 4b. DB 매칭 성공 - 첫 번째 레코드의 DESCRIPTION 사용
+  var dbDescription = dbRecords[0].description || '';
 
   // 5. DESCRIPTION 더블체크 (정규화 후 비교)
   var parsedNorm = normalizeSNGDescription(item.description);
@@ -597,11 +653,61 @@ function validateSNGItemWithDB(item, dbSheet, dbMap) {
     Logger.log('  DB:        ' + dbDescription);
     Logger.log('  → DB 값으로 확정');
   } else {
-    Logger.log('✅ DB 매칭 성공: ' + normalizedItemId);
+    Logger.log('✅ DB 매칭 성공: ' + normalizedItemId + ' (' + dbRecords.length + '개 컬러)');
   }
 
   // 6. DB DESCRIPTION으로 확정
   item.description = dbDescription;
+
+  // 7. UPC 보강 + DB 기준 컬러 확정 (ITEM CODE + COLOR)
+  if (item.color) {
+    // 정규화 함수 (공백/슬래시 제거)
+    var normalizeColor = function(text) {
+      if (!text) return '';
+      return text.toString()
+        .trim()
+        .replace(/\s+/g, '')         // 모든 공백 제거
+        .replace(/\s*\/\s*/g, '/')   // 슬래시 앞뒤 공백 제거
+        .replace(/\s*-\s*/g, '-')    // 하이픈 앞뒤 공백 제거
+        .toUpperCase();
+    };
+
+    var normalizedColor = normalizeColor(item.color);
+
+    // Step 1: 정규화된 컬러로 DB 검색
+    var matchedRecords = [];
+    for (var i = 0; i < dbRecords.length; i++) {
+      var dbColor = normalizeColor(dbRecords[i].color);
+
+      if (dbColor === normalizedColor) {
+        matchedRecords.push(dbRecords[i]);
+      }
+    }
+
+    // Step 2: 매칭 결과 처리
+    if (matchedRecords.length === 0) {
+      // 매칭 실패 → 파싱 컬러 유지 + 경고
+      Logger.log('  ⚠️ DB 미등록 컬러: ' + item.color);
+      item.memo = (item.memo ? item.memo + ' / ' : '') + '⚠️ DB 미등록 컬러';
+
+    } else if (matchedRecords.length === 1) {
+      // 단일 매칭 → DB 컬러로 확정 + UPC 보강
+      item.color = matchedRecords[0].color;  // CRITICAL: DB 컬러로 덮어쓰기
+      item.upc = matchedRecords[0].barcode || '';
+      Logger.log('  ✅ 컬러 확정: ' + item.color + ' (UPC: ' + item.upc + ')');
+
+    } else {
+      // 복수 매칭 → 파싱 컬러 유지 + 경고
+      Logger.log('  ⚠️ 컬러 다중 매칭: ' + matchedRecords.length + '개');
+      Logger.log('    파싱 컬러: ' + item.color);
+      for (var i = 0; i < Math.min(matchedRecords.length, 3); i++) {
+        Logger.log('      - ' + matchedRecords[i].color + ' (UPC: ' + matchedRecords[i].barcode + ')');
+      }
+      item.memo = (item.memo ? item.memo + ' / ' : '') + '⚠️ 컬러 다중 매칭';
+    }
+  } else {
+    Logger.log('  ⚠️ COLOR 없음, UPC 보강 스킵');
+  }
 
   return item;
 }
@@ -644,7 +750,8 @@ function buildSNGItemCodeMap(dbSheet) {
       return { itemCodeMap: {}, columnMap: colMap };
     }
 
-    // ITEM CODE Map 생성
+    // CRITICAL: ITEM CODE Map 생성 (배열 구조)
+    // 동일 ITEM CODE에 여러 Color가 있을 수 있으므로 배열로 저장
     var itemCodeMap = {};
 
     for (var i = 1; i < data.length; i++) {
@@ -654,15 +761,17 @@ function buildSNGItemCodeMap(dbSheet) {
 
       var rowItemCodeNorm = rowItemCode.toString().toUpperCase();
 
-      // CRITICAL: 동일 ITEM CODE는 첫 번째 레코드만 사용 (1:1 매핑)
+      // 배열로 저장 (동일 ITEM CODE, 다른 Color 지원)
       if (!itemCodeMap[rowItemCodeNorm]) {
-        itemCodeMap[rowItemCodeNorm] = {
-          itemCode: rowItemCode,
-          description: data[i][descriptionCol] || '',
-          color: data[i][colMap['Color']] || '',
-          barcode: data[i][colMap['Barcode']] || ''
-        };
+        itemCodeMap[rowItemCodeNorm] = [];
       }
+
+      itemCodeMap[rowItemCodeNorm].push({
+        itemCode: rowItemCode,
+        description: data[i][descriptionCol] || '',
+        color: data[i][colMap['Color']] || '',
+        barcode: data[i][colMap['Barcode']] || ''
+      });
     }
 
     debugLog('SNG DB Map 생성 완료', { itemCount: Object.keys(itemCodeMap).length });

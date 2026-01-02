@@ -32,7 +32,8 @@ function addToOrder(products, companyKey) {
         validProducts.push({
           itemName: products[i].itemName || '',
           color: products[i].color || '',
-          quantity: qty
+          quantity: qty,
+          barcode: products[i].barcode || ''
         });
       }
     }
@@ -50,18 +51,34 @@ function addToOrder(products, companyKey) {
     
     var lastRow = sheet.getLastRow();
     if (lastRow === 0) {
-      sheet.appendRow(['ITEM NAME', 'COLOR', '수량']);
+      sheet.appendRow(['ITEM NAME', 'COLOR', '수량', 'UPC']);
       debugLog('ORDER 시트 헤더 생성');
     }
+    
+    var headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (headerRow.indexOf('UPC') === -1) {
+      headerRow.push('UPC');
+      sheet.getRange(1, headerRow.length).setValue('UPC');
+    }
+    
+    var headerMap = getColumnMap(headerRow);
+    var itemCol = headerMap['ITEM NAME'];
+    var colorCol = headerMap['COLOR'];
+    var qtyCol = headerMap['수량'];
+    if (qtyCol === undefined) {
+      qtyCol = headerMap['?˜ëŸ‰'];
+    }
+    var upcCol = headerMap['UPC'];
     
     var addedCount = 0;
     for (var i = 0; i < validProducts.length; i++) {
       try {
-        sheet.appendRow([
-          validProducts[i].itemName,
-          validProducts[i].color,
-          validProducts[i].quantity
-        ]);
+        var row = new Array(headerRow.length);
+        row[itemCol] = validProducts[i].itemName;
+        row[colorCol] = validProducts[i].color;
+        row[qtyCol] = validProducts[i].quantity;
+        row[upcCol] = validProducts[i].barcode;
+        sheet.appendRow(row);
         addedCount++;
       } catch (rowError) {
         debugLog('행 추가 실패', { error: rowError.toString() });
@@ -131,6 +148,11 @@ function getOrderData(companyKey) {
     var colMap = getColumnMap(headers);
     var itemNameIdx = colMap['ITEM NAME'];
     var colorIdx = colMap['COLOR'];
+    var upcIdx = colMap['UPC'];
+    var qtyIdx = colMap['수량'];
+    if (qtyIdx === undefined) {
+      qtyIdx = colMap['?˜ëŸ‰'];
+    }
     
     if (itemNameIdx === undefined || colorIdx === undefined) {
       return {
@@ -144,16 +166,29 @@ function getOrderData(companyKey) {
       products.push({
         itemName: rows[i][itemNameIdx] || '',
         color: rows[i][colorIdx] || '',
-        quantity: rows[i][colMap['수량']] || '',
+        quantity: rows[i][qtyIdx] || '',
         rowData: rows[i]
       });
     }
     
     products = sortProducts(products);
     
-    var sortedData = [headers];
+    var displayHeaders = headers;
+    if (upcIdx !== undefined) {
+      displayHeaders = headers.filter(function(_, index) {
+        return index !== upcIdx;
+      });
+    }
+    
+    var sortedData = [displayHeaders];
     for (var i = 0; i < products.length; i++) {
-      sortedData.push(products[i].rowData);
+      var rowData = products[i].rowData;
+      if (upcIdx !== undefined) {
+        rowData = rowData.filter(function(_, index) {
+          return index !== upcIdx;
+        });
+      }
+      sortedData.push(rowData);
     }
     
     debugLog('getOrderData 완료', { sortedRows: sortedData.length });

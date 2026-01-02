@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(Get-Content \"c:\\\\Users\\\\lew1s\\\\projects\\\\cc3-invoice-parser\\\\Invoice_Parser.js\" -Raw)",
-      "Bash(Set-Clipboard)"
+      "Bash(Set-Clipboard)",
+      "Bash(git checkout:*)",
+      "Bash(Get-Content \"c:\\\\Users\\\\lew1s\\\\projects\\\\cc3-invoice-parser\\\\Search.js\" -Raw)",
+      "Bash(Measure-Object -Line)"
     ]
   }
 }

@@ -107,29 +107,29 @@ function checkSheetStructure() {
   debugLog('=== 시트 구조 확인 시작 ===');
   
   var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  
+
   // OUTRE 확인
-  var outreSheet = ss.getSheetByName('DB_OUTRE');
+  var outreSheet = ss.getSheetByName(CONFIG.COMPANIES.OUTRE.dbSheet);
   if (outreSheet) {
     var outreData = outreSheet.getDataRange().getValues();
-    debugLog('DB_OUTRE 시트', {
+    debugLog(CONFIG.COMPANIES.OUTRE.dbSheet + ' 시트', {
       rows: outreData.length,
       headers: outreData[0]
     });
   } else {
-    debugLog('DB_OUTRE 시트 없음');
+    debugLog(CONFIG.COMPANIES.OUTRE.dbSheet + ' 시트 없음');
   }
-  
+
   // SNG 확인
-  var sngSheet = ss.getSheetByName('DB_SNG');
+  var sngSheet = ss.getSheetByName(CONFIG.COMPANIES.SNG.dbSheet);
   if (sngSheet) {
     var sngData = sngSheet.getDataRange().getValues();
-    debugLog('DB_SNG 시트', {
+    debugLog(CONFIG.COMPANIES.SNG.dbSheet + ' 시트', {
       rows: sngData.length,
       headers: sngData[0]
     });
   } else {
-    debugLog('DB_SNG 시트 없음');
+    debugLog(CONFIG.COMPANIES.SNG.dbSheet + ' 시트 없음');
   }
   
   debugLog('=== 시트 구조 확인 완료 ===');

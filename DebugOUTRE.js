@@ -573,3 +573,376 @@ function debugOUTREMultilineBackorder() {
   writeDebugOutput(debugOutput.join('\n'));
   Logger.log('✅ 디버그 완료 - DEBUG_OUTPUT 시트 확인');
 }
+
+/**
+ * Reference 폴더 내 OUTRE 인보이스 이상 항목 점검
+ * - itemId/UPC 누락
+ * - memo 경고 포함
+ *
+ * 사용법: debugOUTREReferenceIssues() 실행
+ */
+function debugOUTREReferenceIssues() {
+  var REFERENCE_FOLDER_NAME = 'Reference';
+  var FILE_NAME_FILTER = /^SINV\d+\.docx$/i;
+
+  var folders = DriveApp.getFoldersByName(REFERENCE_FOLDER_NAME);
+  if (!folders.hasNext()) {
+    Logger.log('Reference 폴더를 찾을 수 없음: ' + REFERENCE_FOLDER_NAME);
+    return;
+  }
+
+  var folder = folders.next();
+  var filesIter = folder.getFiles();
+  var files = [];
+
+  while (filesIter.hasNext()) {
+    var file = filesIter.next();
+    if (FILE_NAME_FILTER.test(file.getName())) {
+      files.push(file);
+    }
+  }
+
+  files.sort(function(a, b) {
+    return a.getName().localeCompare(b.getName());
+  });
+
+  var output = [];
+  output.push('OUTRE Reference Debug');
+  output.push('Folder: ' + folder.getName());
+  output.push('Files: ' + files.length);
+  output.push('');
+
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    output.push('--- ' + file.getName() + ' ---');
+
+    try {
+      var text = extractTextFromDocx(file.getBlob());
+      if (!text) {
+        output.push('ERROR: text extraction failed');
+        output.push('');
+        continue;
+      }
+
+      var data = parseInvoice(text, file.getName());
+      output.push('Invoice: ' + (data.invoiceNo || '(none)') +
+                  ' | Vendor: ' + data.vendor +
+                  ' | Lines: ' + data.lineItems.length);
+
+      if (data.vendor !== 'OUTRE') {
+        output.push('SKIP: vendor is not OUTRE');
+        output.push('');
+        continue;
+      }
+
+      var issueCount = 0;
+      for (var li = 0; li < data.lineItems.length; li++) {
+        var item = data.lineItems[li];
+        var notes = [];
+
+        if (!item.itemId) {
+          notes.push('NO_ITEM');
+        }
+        if (item.color && !item.upc) {
+          notes.push('NO_UPC');
+        }
+        if (item.memo && item.memo.indexOf('⚠️') > -1) {
+          notes.push('MEMO=' + item.memo);
+        }
+
+        if (notes.length > 0) {
+          issueCount++;
+          output.push('Line ' + item.lineNo + ': ' + item.description +
+                      ' | Color: ' + (item.color || '-') +
+                      ' | ' + notes.join(' | '));
+        }
+      }
+
+      if (issueCount === 0) {
+        output.push('OK: no issues');
+      }
+    } catch (error) {
+      output.push('ERROR: ' + error.toString());
+    }
+
+    output.push('');
+  }
+
+  writeDebugOutput(output.join('\n'));
+  Logger.log('Debug 완료 - DEBUG_OUTPUT 시트 확인');
+}
+
+/**
+ * PARSING 탭 기준 문제 라인 로그 출력
+ * - OUTRE 기준 경고만 추출
+ * - itemId/UPC 누락, memo 경고 포함
+ *
+ * 사용법: debugOUTREParsingIssues() 실행
+ */
+function debugOUTREParsingIssues() {
+  var sheet = getSheet(CONFIG.INVOICE.PARSING_SHEET);
+  var data = sheet.getDataRange().getValues();
+
+  if (data.length <= 1) {
+    Logger.log('PARSING 탭에 데이터가 없습니다.');
+    return;
+  }
+
+  var output = [];
+  output.push('OUTRE Parsing Debug (PARSING 탭)');
+  output.push('Rows: ' + (data.length - 1));
+  output.push('');
+
+  var issueCount = 0;
+  var invoiceGroups = {};
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var vendor = row[0];
+
+    if (vendor !== 'OUTRE') {
+      continue;
+    }
+
+    var invoiceNo = row[1];
+    var lineNo = row[8];
+    var itemId = row[9];
+    var upc = row[10];
+    var description = row[11];
+    var color = row[13];
+    var qtyShipped = row[16];
+    var unitPrice = row[17];
+    var extPrice = row[18];
+    var memo = row[19];
+
+    var notes = [];
+
+    if (!description) {
+      notes.push('NO_DESC');
+    }
+    if (!itemId) {
+      notes.push('NO_ITEM');
+    }
+    if (color && !upc) {
+      notes.push('NO_UPC');
+    }
+    if (!unitPrice || unitPrice === 0) {
+      notes.push('UNIT_0');
+    }
+    if (!extPrice || extPrice === 0) {
+      notes.push('EXT_0');
+    }
+    if (!qtyShipped || qtyShipped === 0) {
+      notes.push('QTY_0');
+    }
+    if (memo && memo.indexOf('⚠️') > -1) {
+      notes.push('MEMO=' + memo);
+    }
+
+    if (notes.length === 0) {
+      continue;
+    }
+
+    if (!invoiceGroups[invoiceNo]) {
+      invoiceGroups[invoiceNo] = [];
+    }
+
+    invoiceGroups[invoiceNo].push({
+      lineNo: lineNo,
+      description: description,
+      color: color,
+      notes: notes
+    });
+
+    issueCount++;
+  }
+
+  var invoices = Object.keys(invoiceGroups);
+  if (invoices.length === 0) {
+    output.push('OK: no issues found');
+    writeDebugOutput(output.join('\n'));
+    Logger.log('Debug 완료 - DEBUG_OUTPUT 시트 확인');
+    return;
+  }
+
+  invoices.sort();
+
+  for (var ii = 0; ii < invoices.length; ii++) {
+    var inv = invoices[ii];
+    output.push('--- ' + inv + ' ---');
+
+    var lines = invoiceGroups[inv];
+    lines.sort(function(a, b) {
+      return a.lineNo - b.lineNo;
+    });
+
+    for (var li = 0; li < lines.length; li++) {
+      var item = lines[li];
+      output.push('Line ' + item.lineNo + ': ' + item.description +
+                  ' | Color: ' + (item.color || '-') +
+                  ' | ' + item.notes.join(' | '));
+    }
+
+    output.push('');
+  }
+
+  output.unshift('Issues: ' + issueCount);
+  writeDebugOutput(output.join('\n'));
+  Logger.log('Debug 완료 - DEBUG_OUTPUT 시트 확인');
+}
+
+/**
+ * Debug trailing quote matches using PARSING tab.
+ * - Filters OUTRE rows whose description ends with a quote-like char.
+ * - Shows matchOUTREDescriptionFromDB result and size tokens.
+ *
+ * Usage: debugOUTRETrailingQuoteFromParsing()
+ */
+function debugOUTRETrailingQuoteFromParsing() {
+  var sheet = getSheet(CONFIG.INVOICE.PARSING_SHEET);
+  var data = sheet.getDataRange().getValues();
+
+  if (data.length <= 1) {
+    Logger.log('PARSING sheet has no data.');
+    return;
+  }
+
+  var output = [];
+  output.push('OUTRE Trailing Quote Debug (PARSING)');
+  output.push('Rows: ' + (data.length - 1));
+  output.push('');
+
+  var quoteChars = ['"', "'", '��', '��', '`', '��', '��', '��'];
+  var issueCount = 0;
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var vendor = row[0];
+    if (vendor !== 'OUTRE') continue;
+
+    var invoiceNo = row[1];
+    var lineNo = row[8];
+    var description = row[11] || '';
+    var memo = row[19] || '';
+
+    var trimmed = description.replace(/[\s\u200B-\u200D\uFEFF]+$/, '');
+    if (!trimmed) continue;
+
+    var lastChar = trimmed.charAt(trimmed.length - 1);
+    if (quoteChars.indexOf(lastChar) === -1) continue;
+
+    issueCount++;
+
+    var trailingInfo = getOUTRETrailingQuoteInfo(description);
+    var sizeTokens = extractOUTRESizeTokens(description);
+    var match = matchOUTREDescriptionFromDB(description);
+
+    output.push('--- ' + invoiceNo + ' / Line ' + lineNo + ' ---');
+    output.push('Desc: ' + description);
+    output.push('Memo: ' + (memo || '-'));
+    output.push('TrailingQuote: ' + (trailingInfo.has ? 'YES(' + trailingInfo.char + ')' : 'NO'));
+    output.push('SizeTokens: ' + (sizeTokens.length ? sizeTokens.join(', ') : '-'));
+
+    if (match && match.description) {
+      output.push('Match: ' + match.description + ' | type=' + match.matchType +
+                  ' | score=' + (match.score || 0));
+    } else if (match && match.altDescription) {
+      output.push('Match: NONE | alt=' + match.altDescription +
+                  ' | reason=' + (match.altReason || '-') +
+                  ' | score=' + (match.altScore || 0));
+    } else {
+      output.push('Match: NONE');
+    }
+
+    output.push('');
+  }
+
+  output.unshift('Issues: ' + issueCount);
+  writeDebugOutput(output.join('\n'));
+  Logger.log('Debug done - see DEBUG_OUTPUT sheet.');
+}
+
+/**
+ * Debug only the WAVY BOMB TWIST line from a specific file.
+ * Usage: debugOUTREWavyBombTwistQuote()
+ */
+function debugOUTREWavyBombTwistQuote() {
+  var TARGET_FILE_NAME = 'SINV1903556.docx';
+  var TARGET_PHRASE = 'X-PRESSION - TWISTED UP - WAVY BOMB TWIST';
+
+  var files = DriveApp.getFilesByName(TARGET_FILE_NAME);
+  if (!files.hasNext()) {
+    Logger.log('File not found: ' + TARGET_FILE_NAME);
+    return;
+  }
+
+  var file = files.next();
+  var text = extractTextFromDocx(file.getBlob());
+  if (!text) {
+    Logger.log('Text extraction failed for: ' + TARGET_FILE_NAME);
+    return;
+  }
+
+  var lines = text.split(/\r?\n/);
+  var output = [];
+  var matches = 0;
+
+  output.push('OUTRE Wavy Bomb Twist Debug');
+  output.push('File: ' + TARGET_FILE_NAME);
+  output.push('');
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (!line || line.indexOf(TARGET_PHRASE) === -1) continue;
+
+    matches++;
+
+    var trimmed = line.replace(/[\s\u200B-\u200D\uFEFF]+$/, '');
+    var lastChar = trimmed ? trimmed.charAt(trimmed.length - 1) : '';
+    var lastCode = lastChar ? lastChar.charCodeAt(0) : -1;
+
+    var tail = trimmed.slice(Math.max(0, trimmed.length - 8));
+    var tailCodes = [];
+    for (var t = 0; t < tail.length; t++) {
+      tailCodes.push('0x' + tail.charCodeAt(t).toString(16));
+    }
+
+    var trailingInfo = getOUTRETrailingQuoteInfo(trimmed);
+    var sizeTokensInput = extractOUTRESizeTokens(trimmed);
+    var match = matchOUTREDescriptionFromDB(trimmed);
+
+    output.push('Line ' + i + ': ' + line);
+    output.push('Trimmed: ' + trimmed);
+    output.push('LastChar: ' + (lastChar ? "'" + lastChar + "'" : '(none)') +
+                ' code=' + lastCode + ' hex=' + (lastCode >= 0 ? '0x' + lastCode.toString(16) : '-'));
+    output.push('TailCodes: ' + (tailCodes.length ? tailCodes.join(', ') : '-'));
+    output.push('TrailingQuoteInfo: has=' + (trailingInfo && trailingInfo.has ? 'YES' : 'NO') +
+                ' char=' + (trailingInfo ? trailingInfo.char : '-'));
+    output.push('InputSizeTokens: ' + (sizeTokensInput.length ? sizeTokensInput.join(', ') : '-'));
+
+    if (match && match.description) {
+      var dbSizeTokens = extractOUTRESizeTokens(match.description);
+      output.push('DBMatch: ' + match.description + ' | type=' + match.matchType +
+                  ' | score=' + (match.score || 0));
+      output.push('DBSizeTokens: ' + (dbSizeTokens.length ? dbSizeTokens.join(', ') : '-'));
+    } else if (match && match.altDescription) {
+      var altSizeTokens = extractOUTRESizeTokens(match.altDescription);
+      output.push('DBMatch: NONE | alt=' + match.altDescription +
+                  ' | reason=' + (match.altReason || '-') +
+                  ' | score=' + (match.altScore || 0));
+      output.push('AltSizeTokens: ' + (altSizeTokens.length ? altSizeTokens.join(', ') : '-'));
+    } else {
+      output.push('DBMatch: NONE');
+    }
+
+    output.push('');
+  }
+
+  if (matches === 0) {
+    output.push('No matching lines found.');
+  }
+
+  output.unshift('Matches: ' + matches);
+  writeDebugOutput(output.join('\n'));
+  Logger.log('Debug done - see DEBUG_OUTPUT sheet.');
+}

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
   <base target="_top">
@@ -24,6 +24,7 @@
       min-height: 100vh;
       padding: 10px;
       transition: background 0.3s ease;
+      overflow-x: hidden;
     }
     
     /* 회사별 배경 테마 */
@@ -42,6 +43,9 @@
       border-radius: 20px;
       box-shadow: 0 10px 40px rgba(0,0,0,0.2);
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 20px);
     }
     
     /* ===== 헤더 ===== */
@@ -91,11 +95,16 @@
     
     .content {
       padding: 20px;
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
     
     /* ===== 바코드 입력 섹션 ===== */
     #inputSection {
       display: block;
+      overflow: auto;
     }
     
     .input-label {
@@ -161,6 +170,47 @@
     .camera-btn:active {
       transform: scale(0.98);
     }
+
+    .keyboard-btn {
+      height: 60px;
+      padding: 0 18px;
+      background: linear-gradient(135deg, #6C757D 0%, #495057 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      white-space: nowrap;
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    .keyboard-btn.active {
+      background: linear-gradient(135deg, #343A40 0%, #212529 100%);
+    }
+
+    .keyboard-btn:active {
+      transform: scale(0.98);
+    }
+
+    .search-btn {
+      width: 100%;
+      height: 52px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #2D9CDB 0%, #1C7ED6 100%);
+      color: white;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.12);
+      margin-bottom: 15px;
+    }
+
+    .search-btn:active {
+      transform: scale(0.98);
+    }
     
     /* ===== 숫자 키패드 ===== */
     .keypad {
@@ -203,6 +253,62 @@
       background: linear-gradient(135deg, #DC143C 0%, #B22222 100%);
       color: white;
       border: none;
+    }
+
+    /* ===== 최근 검색 / 즐겨찾기 ===== */
+    .quick-section {
+      margin-top: 10px;
+      margin-bottom: 15px;
+    }
+
+    .quick-header {
+      font-size: 14px;
+      font-weight: 700;
+      color: #555;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .quick-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .quick-item {
+      padding: 8px 12px;
+      background: #f5f5f5;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #e0e0e0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .quick-item .company-pill {
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .company-pill.outre {
+      background: #FF8C00;
+    }
+
+    .company-pill.sng {
+      background: #4169E1;
+    }
+
+    .quick-empty {
+      font-size: 12px;
+      color: #888;
     }
     
     /* ===== 카메라 모달 ===== */
@@ -330,6 +436,174 @@
     /* ===== 결과 섹션 ===== */
     #resultsSection {
       display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* ===== 키워드 검색 결과 섹션 ===== */
+    #keywordResultsSection {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .keyword-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .keyword-back-btn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 8px;
+      background: #f0f0f0;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .keyword-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .keyword-meta {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .keyword-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .keyword-tab {
+      flex: 1;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 10px;
+      background: #f5f5f5;
+      font-weight: 700;
+      cursor: pointer;
+      color: #666;
+    }
+
+    .keyword-tab.active {
+      background: #333;
+      color: white;
+    }
+
+    .keyword-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .keyword-filter {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      font-size: 12px;
+      font-weight: 700;
+      color: #555;
+      cursor: pointer;
+      background: white;
+    }
+
+    .keyword-filter.active {
+      background: #2D9CDB;
+      color: white;
+      border-color: #2D9CDB;
+    }
+
+    .keyword-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: auto;
+      flex: 1;
+      padding-right: 2px;
+    }
+
+    .keyword-item {
+      padding: 12px 14px;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .keyword-desc {
+      font-weight: 700;
+      font-size: 14px;
+      color: #333;
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .keyword-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .keyword-status {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 10px;
+      background: #f1f3f5;
+      color: #555;
+    }
+
+    .favorite-btn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .keyword-empty {
+      text-align: center;
+      color: #777;
+      padding: 30px 10px;
+      font-size: 14px;
+    }
+
+    .text-shipped {
+      color: magenta;
+      font-weight: 700;
+    }
+    
+    .results-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    
+    .results-item-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #333;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+    
+    .results-company-badge {
+      flex-shrink: 0;
     }
     
     /* 상단 액션 버튼 (4개 나란히) */
@@ -392,58 +666,68 @@
       display: none;
     }
     
-    /* ===== 수량 조절 버튼 ===== */
+    /* ===== 수량 조절 버튼 (2줄 레이아웃) ===== */
     .quantity-controls {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      gap: 10px;
-      margin-bottom: 20px;
+      gap: 8px;
+      margin-bottom: 15px;
     }
-    
+
     .qty-btn {
-      height: 50px;
-      font-size: 18px;
+      height: 40px;
+      font-size: 16px;
       font-weight: 700;
       background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
       color: white;
       border: none;
-      border-radius: 10px;
+      border-radius: 8px;
       cursor: pointer;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       user-select: none;
       transition: background 0.3s;
     }
-    
+
     .qty-btn.theme-outre {
       background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
     }
-    
+
     .qty-btn.theme-sng {
       background: linear-gradient(135deg, #9370DB 0%, #8A2BE2 100%);
     }
-    
+
     .qty-btn:active {
       transform: scale(0.95);
     }
-    
+
     .qty-btn.clear {
       background: linear-gradient(135deg, #DC143C 0%, #B22222 100%);
+    }
+
+    .qty-btn.all-toggle.active {
+      background: linear-gradient(135deg, #333333 0%, #555555 100%);
+    }
+
+    .qty-spacer {
+      /* 빈 공간 (나중 확장용) */
     }
     
     /* ===== 제품 테이블 ===== */
     .table-container {
-      overflow-x: auto;
+      overflow-x: hidden;
       margin-bottom: 20px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      max-height: 500px;
+      max-height: none;
       overflow-y: auto;
+      flex: 1;
     }
     
     .products-table {
       width: 100%;
       border-collapse: collapse;
       background: white;
+      table-layout: fixed;
     }
     
     .products-table thead {
@@ -455,7 +739,7 @@
     .products-table th {
       background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
       color: white;
-      padding: 15px;
+      padding: 10px;
       text-align: left;
       font-weight: 600;
       font-size: 16px;
@@ -471,9 +755,55 @@
     }
     
     .products-table td {
-      padding: 15px;
+      padding: 10px;
       border-bottom: 1px solid #e0e0e0;
       font-size: 16px;
+      vertical-align: middle;
+      line-height: 1.2;
+    }
+    
+    .products-table th.qty-col,
+    .products-table td.qty-col {
+      width: 70px;
+    }
+    
+    .products-table th.color-col,
+    .products-table td.color-col {
+      width: 90px;
+    }
+    
+    .products-table th.shipped-col,
+    .products-table td.shipped-col {
+      width: 70px;
+      text-align: right;
+    }
+    
+    .products-table th.price-col,
+    .products-table td.price-col {
+      width: 100px;
+      text-align: right;
+      white-space: normal;
+      word-break: break-word;
+      overflow: hidden;
+    }
+    
+    .price-text {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      white-space: normal;
+      word-break: break-word;
+    }
+    
+    .color-shipped {
+      color: magenta;
+      font-weight: 700;
+    }
+    
+    .color-backorder {
+      color: green;
+      font-weight: 700;
     }
     
     .products-table tbody tr {
@@ -484,7 +814,22 @@
     .products-table tbody tr:hover {
       background-color: #FFF8F0;
     }
-    
+
+    .products-table tbody tr.group-header-row {
+      cursor: default;
+      background-color: #F5E6D3;
+    }
+
+    .products-table tbody tr.group-header-row:hover {
+      background-color: #F5E6D3;
+    }
+
+    .group-header-cell {
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
     .products-table tbody tr.selected {
       background-color: #FFE4B5 !important;
       border-left: 4px solid #FFB6C1;
@@ -814,10 +1159,10 @@
       .quantity-controls {
         grid-template-columns: repeat(3, 1fr);
       }
-      
+
       .qty-btn {
-        height: 45px;
-        font-size: 16px;
+        height: 38px;
+        font-size: 14px;
       }
       
       .products-table th,
@@ -841,6 +1186,10 @@
       .camera-btn {
         width: 100%;
       }
+
+      .keyboard-btn {
+        width: 100%;
+      }
       
       .action-buttons {
         flex-direction: column;
@@ -852,6 +1201,155 @@
       
       .modal-btn {
         width: 100%;
+      }
+    }
+
+    /* ============================================================================ */
+    /* 상태 관리 UI - 컬러 통계 & 상태 배지 */
+    /* ============================================================================ */
+
+    /* 컬러 통계 컨테이너 (고정 위치) */
+    #color-stats-container {
+      display: none;
+      margin: 15px 0;
+      padding: 15px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: 12px;
+      border: 2px solid #dee2e6;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #color-stats-container.visible {
+      display: block;
+    }
+
+    .stats-title {
+      font-weight: 700;
+      font-size: 16px;
+      color: #495057;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stats-title::before {
+      content: '📊';
+      font-size: 18px;
+    }
+
+    #color-stats-content {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .stat-item {
+      flex: 1;
+      min-width: 100px;
+      padding: 10px 15px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 12px;
+      color: #6c757d;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      display: block;
+      font-weight: 700;
+      font-size: 20px;
+      color: #212529;
+    }
+
+    /* 상태별 배지 */
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      margin-left: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 12px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .badge-new {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .badge-discontinue-unknown {
+      background-color: #FFF9C4;
+      color: #F57C00;
+      border: 1px solid #FFB300;
+    }
+
+    .badge-discontinued {
+      background-color: #E0E0E0;
+      color: #757575;
+      border: 1px solid #BDBDBD;
+    }
+
+    /* 상태별 행 스타일 */
+    .status-new {
+      /* 기본 스타일 유지 */
+    }
+
+    .status-active {
+      /* 기본 스타일 유지 */
+    }
+
+    .status-discontinue-unknown {
+      /* 기본 스타일 유지 */
+    }
+
+    .status-discontinued {
+      background-color: #E0E0E0 !important;
+    }
+
+    .status-discontinued input[type="number"] {
+      background-color: #f5f5f5 !important;
+      cursor: not-allowed !important;
+      color: #999 !important;
+    }
+
+    .input-disabled-label {
+      display: block;
+      font-size: 11px;
+      color: #999;
+      margin-top: 3px;
+      text-align: center;
+    }
+
+    /* 반응형: 모바일에서 통계 항목 크기 조정 */
+    @media (max-width: 600px) {
+      .stat-item {
+        min-width: 70px;
+        padding: 8px 10px;
+      }
+
+      .stat-value {
+        font-size: 18px;
+      }
+
+      .status-badge {
+        font-size: 10px;
+        padding: 2px 8px;
       }
     }
   </style>
@@ -871,11 +1369,14 @@
         <div class="input-label">
           🔍 바코드 또는 제품명을 입력하세요
         </div>
-        
+
         <div class="barcode-container">
-          <input type="text" id="barcodeDisplay" maxlength="50" inputmode="text">
+          <input type="text" id="barcodeDisplay" maxlength="50" inputmode="none" readonly>
           <button class="camera-btn" onclick="app.openCamera()">📷 카메라</button>
+          <button class="keyboard-btn" onclick="app.toggleKeyboardMode()">⌨ 키보드</button>
         </div>
+
+        <button class="search-btn" onclick="app.searchFromKeyboard()">🔍 검색</button>
         
         <div class="keypad">
           <button class="key-btn" onclick="app.addDigit('1')">1</button>
@@ -891,6 +1392,18 @@
           <button class="key-btn" onclick="app.addDigit('0')">0</button>
           <button class="key-btn delete" onclick="app.deleteDigit()">←</button>
         </div>
+
+        <div class="quick-section">
+          <div class="quick-header">⭐ 즐겨찾기</div>
+          <div id="favoritesList" class="quick-list"></div>
+          <div id="favoritesEmpty" class="quick-empty">즐겨찾기 없음</div>
+        </div>
+
+        <div class="quick-section">
+          <div class="quick-header">🕘 최근 검색/스캔</div>
+          <div id="historyList" class="quick-list"></div>
+          <div id="historyEmpty" class="quick-empty">최근 항목 없음</div>
+        </div>
       </div>
       
       <!-- 로딩 -->
@@ -901,6 +1414,9 @@
       
       <!-- 결과 섹션 -->
       <div id="resultsSection">
+        <div class="results-summary" id="keywordBackRow" style="display: none;">
+          <button class="keyword-back-btn" onclick="app.backToKeywordResults()">← 검색 결과</button>
+        </div>
         <div class="action-buttons-top">
           <button class="action-btn-top add" onclick="app.addToOrder()">
             <span style="font-size: 24px;">➕</span>
@@ -916,29 +1432,72 @@
           </button>
         </div>
         
+        <div class="results-summary">
+          <div id="resultItemName" class="results-item-name"></div>
+          <div id="resultCompanyBadge" class="company-badge results-company-badge"></div>
+        </div>
+
+        <!-- 컬러 통계 영역 (고정 위치) - 주석 처리 (나중 사용) -->
+        <!--
+        <div id="color-stats-container">
+          <div class="stats-title">컬러 정보</div>
+          <div id="color-stats-content"></div>
+        </div>
+        -->
+
         <div class="quantity-controls">
+          <!-- 1줄: ALL, +1, +3, +6, +10, +12 -->
+          <button class="qty-btn all-toggle" onclick="app.toggleAllMode()">ALL</button>
           <button class="qty-btn" onclick="app.adjustQuantity(1)">+1</button>
           <button class="qty-btn" onclick="app.adjustQuantity(3)">+3</button>
           <button class="qty-btn" onclick="app.adjustQuantity(6)">+6</button>
           <button class="qty-btn" onclick="app.adjustQuantity(10)">+10</button>
           <button class="qty-btn" onclick="app.adjustQuantity(12)">+12</button>
+
+          <!-- 2줄: CLEAR + 여백 (나중 확장용) -->
           <button class="qty-btn clear" onclick="app.clearQuantity()">CLEAR</button>
+          <div class="qty-spacer"></div>
+          <div class="qty-spacer"></div>
+          <div class="qty-spacer"></div>
+          <div class="qty-spacer"></div>
+          <div class="qty-spacer"></div>
         </div>
         
         <div class="table-container">
           <table class="products-table">
             <thead>
               <tr>
-                <th>수량</th>
-                <th>ITEM NAME</th>
-                <th>COLOR</th>
-                <th>회사</th>
+                <th class="qty-col">수량</th>
+                <th class="color-col">COLOR</th>
+                <th class="shipped-col">SHIPPED (12MO)</th>
+                <th class="price-col">PRICE</th>
               </tr>
             </thead>
             <tbody id="productsTableBody">
             </tbody>
           </table>
         </div>
+      </div>
+
+      <!-- 키워드 검색 결과 섹션 -->
+      <div id="keywordResultsSection">
+        <div class="keyword-header">
+          <button class="keyword-back-btn" onclick="app.backToKeywordInput()">←</button>
+          <div class="keyword-title">검색 결과</div>
+        </div>
+        <div class="keyword-meta" id="keywordMeta"></div>
+        <div class="keyword-tabs">
+          <button class="keyword-tab" id="tabOutre" onclick="app.switchKeywordCompany('OUTRE')">OUTRE</button>
+          <button class="keyword-tab" id="tabSng" onclick="app.switchKeywordCompany('SNG')">SNG</button>
+        </div>
+        <div class="keyword-filters">
+          <button class="keyword-filter active" data-filter="ALL" onclick="app.setKeywordFilter('ALL')">전체</button>
+          <button class="keyword-filter" data-filter="ACTIVE" onclick="app.setKeywordFilter('ACTIVE')">활성</button>
+          <button class="keyword-filter" data-filter="DISCONTINUE_UNKNOWN" onclick="app.setKeywordFilter('DISCONTINUE_UNKNOWN')">단종 예정</button>
+          <button class="keyword-filter" data-filter="DISCONTINUED" onclick="app.setKeywordFilter('DISCONTINUED')">단종</button>
+        </div>
+        <div id="keywordResultsList" class="keyword-list"></div>
+        <div id="keywordEmpty" class="keyword-empty" style="display: none;"></div>
       </div>
     </div>
   </div>
@@ -996,10 +1555,63 @@
   
   <script>
     // ============================================================================
-    // CC3 HAIR ORDER APP - Frontend v4.1
-    // Multi-Company Support (OUTRE + SNG) + Product Search
+    // CC3 HAIR ORDER APP - Frontend v4.2
+    // Multi-Company Support (OUTRE + SNG) + Product Search + Status Management
     // ============================================================================
-    
+
+    // ============================================================================
+    // 상태 매핑 테이블 (UI 렌더링 정책)
+    // ============================================================================
+    var STATUS_CONFIG = {
+      'NEW': {
+        label: '신규',
+        badgeClass: 'badge-new',
+        rowClass: 'status-new',
+        showBadge: true,
+        allowInput: true
+      },
+      'ACTIVE': {
+        label: '활성',
+        badgeClass: '',
+        rowClass: 'status-active',
+        showBadge: false,
+        allowInput: true
+      },
+      'DISCONTINUE_UNKNOWN': {
+        label: '단종 예정',
+        badgeClass: 'badge-discontinue-unknown',
+        rowClass: 'status-discontinue-unknown',
+        showBadge: true,
+        allowInput: true  // 정책: 현재는 허용, 필요시 false로 변경 가능
+      },
+      'DISCONTINUED': {
+        label: '단종',
+        badgeClass: 'badge-discontinued',
+        rowClass: 'status-discontinued',
+        showBadge: true,
+        allowInput: false
+      }
+    };
+
+    /**
+     * 상태 코드를 UI 설정으로 변환
+     * @param {string} status - 상태 코드 (예: 'DISCONTINUED')
+     * @return {object} UI 설정 객체
+     */
+    function getStatusConfig(status) {
+      return STATUS_CONFIG[status] || STATUS_CONFIG['ACTIVE'];
+    }
+
+    /**
+     * HTML 이스케이프 (XSS 방지)
+     */
+    function escapeHtml(text) {
+      if (!text) return '';
+      var div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
     var app = {
       // 상태
       barcode: '',
@@ -1007,10 +1619,21 @@
       selectedRow: -1,
       cameraActive: false,
       processing: false,
+      allMode: false,
       orderData: {},  // { OUTRE: [], SNG: [] }
       detectionBuffer: {},
       currentCompany: null,  // 현재 스캔된 회사 (OUTRE or SNG)
       viewingCompany: 'SNG',  // 장바구니에서 보고 있는 회사
+      keyboardMode: false,
+      keywordQuery: '',
+      keywordResults: { OUTRE: [], SNG: [] },
+      keywordMeta: null,
+      activeKeywordCompany: '',
+      keywordFilter: 'ALL',
+      keywordReturnEnabled: false,
+      lastSelectedCompany: '',
+      history: [],
+      favorites: [],
       
       // DOM 요소
       barcodeDisplay: null,
@@ -1018,6 +1641,21 @@
       resultsSection: null,
       loading: null,
       productsTableBody: null,
+      resultItemName: null,
+      resultCompanyBadge: null,
+      keywordResultsSection: null,
+      keywordResultsList: null,
+      keywordMetaEl: null,
+      keywordEmptyEl: null,
+      tabOutre: null,
+      tabSng: null,
+      keywordBackRow: null,
+      searchBtn: null,
+      keyboardBtn: null,
+      historyList: null,
+      historyEmpty: null,
+      favoritesList: null,
+      favoritesEmpty: null,
       cameraModal: null,
       orderModal: null,
       orderModalBody: null,
@@ -1033,6 +1671,21 @@
         this.resultsSection = document.getElementById('resultsSection');
         this.loading = document.getElementById('loading');
         this.productsTableBody = document.getElementById('productsTableBody');
+        this.resultItemName = document.getElementById('resultItemName');
+        this.resultCompanyBadge = document.getElementById('resultCompanyBadge');
+        this.keywordResultsSection = document.getElementById('keywordResultsSection');
+        this.keywordResultsList = document.getElementById('keywordResultsList');
+        this.keywordMetaEl = document.getElementById('keywordMeta');
+        this.keywordEmptyEl = document.getElementById('keywordEmpty');
+        this.tabOutre = document.getElementById('tabOutre');
+        this.tabSng = document.getElementById('tabSng');
+        this.keywordBackRow = document.getElementById('keywordBackRow');
+        this.searchBtn = document.querySelector('.search-btn');
+        this.keyboardBtn = document.querySelector('.keyboard-btn');
+        this.historyList = document.getElementById('historyList');
+        this.historyEmpty = document.getElementById('historyEmpty');
+        this.favoritesList = document.getElementById('favoritesList');
+        this.favoritesEmpty = document.getElementById('favoritesEmpty');
         this.cameraModal = document.getElementById('cameraModal');
         this.orderModal = document.getElementById('orderModal');
         this.orderModalBody = document.getElementById('orderModalBody');
@@ -1045,6 +1698,17 @@
         
         // 바코드 스캐너 이벤트
         this.setupBarcodeScanner();
+
+        // 기본 스캔 모드 (키보드 비활성)
+        this.setKeyboardMode(false);
+
+        // 최근 검색/즐겨찾기 로드
+        this.loadLocalHistory();
+        this.loadLocalFavorites();
+        this.renderHistory();
+        this.renderFavorites();
+        this.restoreHistoryFromServer();
+        this.restoreFavoritesFromServer();
         
         console.log('초기화 완료');
       },
@@ -1056,7 +1720,7 @@
         var scanTimeout = null;
         
         document.addEventListener('keydown', function(e) {
-          if (self.cameraActive || self.orderModal.classList.contains('active')) {
+          if (self.cameraActive || self.orderModal.classList.contains('active') || self.keyboardMode) {
             return;
           }
           
@@ -1094,7 +1758,11 @@
       onBarcodeKeyDown: function(e) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          this.searchProduct();
+          if (this.keyboardMode) {
+            this.searchFromKeyboard();
+          } else {
+            this.searchProduct();
+          }
         }
       },
       
@@ -1109,7 +1777,11 @@
         
         var self = this;
         setTimeout(function() {
-          self.searchProduct();
+          if (self.keyboardMode) {
+            self.searchFromKeyboard();
+          } else {
+            self.searchProduct();
+          }
         }, 100);
       },
       
@@ -1131,7 +1803,63 @@
       clearBarcode: function() {
         this.barcode = '';
         this.barcodeDisplay.value = '';
-        this.barcodeDisplay.focus();
+        if (this.keyboardMode) {
+          this.barcodeDisplay.focus();
+        }
+      },
+
+      toggleKeyboardMode: function() {
+        this.setKeyboardMode(!this.keyboardMode);
+      },
+
+      setKeyboardMode: function(enabled) {
+        this.keyboardMode = !!enabled;
+        if (this.keyboardMode) {
+          this.barcodeDisplay.removeAttribute('readonly');
+          this.barcodeDisplay.setAttribute('inputmode', 'text');
+          this.barcodeDisplay.focus();
+          if (this.keyboardBtn) {
+            this.keyboardBtn.classList.add('active');
+          }
+        } else {
+          this.barcodeDisplay.setAttribute('readonly', 'readonly');
+          this.barcodeDisplay.setAttribute('inputmode', 'none');
+          this.barcodeDisplay.blur();
+          if (this.keyboardBtn) {
+            this.keyboardBtn.classList.remove('active');
+          }
+        }
+      },
+
+      searchFromKeyboard: function() {
+        if (this.processing) return;
+
+        var input = (this.barcode || '').trim();
+        if (!input) {
+          this.showAlert('❌ 검색어를 입력해주세요.');
+          return;
+        }
+
+        this.keywordReturnEnabled = false;
+
+        if (/^\d{12}$/.test(input)) {
+          this.searchProduct();
+          return;
+        }
+
+        this.keywordQuery = input;
+        this.processing = true;
+        this.showSection('loading');
+
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function(result) {
+            self.handleKeywordSearchSuccess(result);
+          })
+          .withFailureHandler(function(error) {
+            self.handleKeywordSearchError(error);
+          })
+          .searchByKeyword(input, this.lastSelectedCompany || '');
       },
       
       // 제품 검색
@@ -1144,6 +1872,8 @@
         }
         
         console.log('제품 검색:', this.barcode);
+
+        this.keywordReturnEnabled = false;
         
         this.processing = true;
         this.showSection('loading');
@@ -1162,33 +1892,355 @@
       // 검색 성공
       handleSearchSuccess: function(result) {
         this.processing = false;
-        
+
         if (!result.success) {
           this.showAlert(result.error);
           this.showSection('input');
           this.clearBarcode();
           return;
         }
-        
+
         console.log('검색 성공:', result.products.length, '개 (' + result.company + ')');
-        
+
         this.products = result.products || [];
         this.currentCompany = result.company;  // OUTRE 또는 SNG
-        
+        this.allMode = false;
+        this.updateAllToggle();
+
+        // ========================================
+        // 메타 정보 처리 (알림 표시)
+        // ========================================
+        if (result.meta && result.meta.alert) {
+          var alert = result.meta.alert;
+          this.showAlert(alert.message);
+        }
+
+        // ========================================
+        // 컬러 통계 표시
+        // ========================================
+        this.displayColorStats(result.meta);
+
+        if (this.resultItemName) {
+          var firstItemName = '';
+          for (var i = 0; i < this.products.length; i++) {
+            if (!this.products[i].isGroupHeader) {
+              firstItemName = this.products[i].itemName || '';
+              break;
+            }
+          }
+          if (!firstItemName && this.products.length > 0) {
+            firstItemName = this.products[0].itemName || '';
+          }
+          this.resultItemName.textContent = firstItemName;
+        }
+        if (this.resultCompanyBadge) {
+          this.resultCompanyBadge.textContent = this.currentCompany || '';
+          this.resultCompanyBadge.className = 'company-badge results-company-badge ' +
+            (this.currentCompany === 'OUTRE' ? 'outre' : 'sng');
+        }
+
         // 테마 적용
         this.applyTheme(this.currentCompany);
-        
+
         this.displayProducts();
         this.showSection('results');
-        
-        // 첫 번째 제품 자동 선택
-        if (this.products.length > 0) {
+        if (this.keywordBackRow) {
+          this.keywordBackRow.style.display = this.keywordReturnEnabled ? 'flex' : 'none';
+        }
+
+        var backorderAppliedCount = 0;
+        for (var i = 0; i < this.products.length; i++) {
+          if (this.products[i].backorderApplied) {
+            backorderAppliedCount++;
+          }
+        }
+        if (backorderAppliedCount > 0) {
+          this.showAlert('백오더 수량 자동 입력 - 녹색');
+        }
+
+        // 첫 번째 제품 자동 선택 (그룹 헤더 제외)
+        var firstIndex = -1;
+        for (var i = 0; i < this.products.length; i++) {
+          if (!this.products[i].isGroupHeader) {
+            firstIndex = i;
+            break;
+          }
+        }
+        if (firstIndex >= 0) {
           var self = this;
           setTimeout(function() {
-            self.selectRow(0);
-            self.scrollToRow(0);
+            self.selectRow(firstIndex);
+            self.scrollToRow(firstIndex);
           }, 100);
         }
+
+        if (!this.keywordReturnEnabled) {
+          this.recordHistoryFromResult(result);
+        }
+      },
+
+      handleKeywordSearchSuccess: function(result) {
+        this.processing = false;
+
+        if (!result || !result.success) {
+          this.showAlert(result && result.error ? result.error : '❌ 검색 중 오류가 발생했습니다.');
+          this.showSection('input');
+          return;
+        }
+
+        this.keywordResults = result.results || { OUTRE: [], SNG: [] };
+        this.keywordMeta = result.meta || null;
+        this.activeKeywordCompany = this.selectDefaultKeywordCompany(result);
+        this.keywordFilter = 'ALL';
+        this.renderKeywordTabs();
+        this.renderKeywordResults();
+
+        if (this.keywordMetaEl) {
+          var total = (this.keywordMeta && this.keywordMeta.totalCount) ? this.keywordMeta.totalCount : 0;
+          this.keywordMetaEl.textContent = '"' + this.keywordQuery + '" 결과 ' + total + '개';
+        }
+
+        this.showSection('keyword-results');
+      },
+
+      handleKeywordSearchError: function(error) {
+        this.processing = false;
+        this.showSection('input');
+        this.showAlert('❌ 검색 중 오류가 발생했습니다.');
+        console.error('키워드 검색 오류:', error);
+      },
+
+      selectDefaultKeywordCompany: function(result) {
+        var results = result.results || { OUTRE: [], SNG: [] };
+        var outreCount = results.OUTRE.length || 0;
+        var sngCount = results.SNG.length || 0;
+
+        if (this.lastSelectedCompany && results[this.lastSelectedCompany] && results[this.lastSelectedCompany].length > 0) {
+          return this.lastSelectedCompany;
+        }
+
+        if (outreCount === 0 && sngCount > 0) return 'SNG';
+        if (sngCount === 0 && outreCount > 0) return 'OUTRE';
+
+        if (outreCount > 0 && sngCount > 0) {
+          var ratio = Math.max(outreCount / sngCount, sngCount / outreCount);
+          if (ratio >= 10) {
+            return outreCount > sngCount ? 'OUTRE' : 'SNG';
+          }
+        }
+
+        return 'OUTRE';
+      },
+
+      switchKeywordCompany: function(company) {
+        this.activeKeywordCompany = company;
+        this.lastSelectedCompany = company;
+        this.renderKeywordTabs();
+        this.renderKeywordResults();
+      },
+
+      setKeywordFilter: function(filter) {
+        this.keywordFilter = filter;
+        var filters = document.querySelectorAll('.keyword-filter');
+        for (var i = 0; i < filters.length; i++) {
+          filters[i].classList.toggle('active', filters[i].dataset.filter === filter);
+        }
+        this.renderKeywordResults();
+      },
+
+      renderKeywordTabs: function() {
+        if (!this.tabOutre || !this.tabSng) return;
+        var outreCount = (this.keywordResults.OUTRE || []).length;
+        var sngCount = (this.keywordResults.SNG || []).length;
+
+        this.tabOutre.textContent = 'OUTRE (' + outreCount + ')';
+        this.tabSng.textContent = 'SNG (' + sngCount + ')';
+
+        this.tabOutre.classList.toggle('active', this.activeKeywordCompany === 'OUTRE');
+        this.tabSng.classList.toggle('active', this.activeKeywordCompany === 'SNG');
+      },
+
+      renderKeywordResults: function() {
+        if (!this.keywordResultsList || !this.keywordEmptyEl) return;
+        this.keywordResultsList.innerHTML = '';
+
+        var list = (this.keywordResults[this.activeKeywordCompany] || []);
+        var filtered = [];
+
+        for (var i = 0; i < list.length; i++) {
+          if (this.passesKeywordFilter(list[i])) {
+            filtered.push(list[i]);
+          }
+        }
+
+        if (filtered.length === 0) {
+          this.keywordEmptyEl.style.display = 'block';
+          this.keywordEmptyEl.textContent = this.buildKeywordEmptyMessage();
+          return;
+        }
+
+        this.keywordEmptyEl.style.display = 'none';
+
+        for (var j = 0; j < filtered.length; j++) {
+          var item = filtered[j];
+          var row = document.createElement('div');
+          row.className = 'keyword-item';
+          row.onclick = this.openQuantityView.bind(this, item, true);
+
+          var desc = document.createElement('div');
+          desc.className = 'keyword-desc';
+          desc.textContent = item.description || '';
+          if (this.isItemOrdered(item)) {
+            desc.className += ' text-shipped';
+          }
+
+          var actions = document.createElement('div');
+          actions.className = 'keyword-actions';
+
+          var status = document.createElement('div');
+          status.className = 'keyword-status';
+          status.textContent = this.getKeywordStatusLabel(item);
+
+          var favBtn = document.createElement('button');
+          favBtn.className = 'favorite-btn';
+          favBtn.textContent = this.isFavorite(item) ? '★' : '☆';
+          favBtn.onclick = (function(self, data) {
+            return function(e) {
+              e.stopPropagation();
+              self.toggleFavorite(data);
+            };
+          })(this, item);
+
+          actions.appendChild(status);
+          actions.appendChild(favBtn);
+          row.appendChild(desc);
+          row.appendChild(actions);
+
+          this.keywordResultsList.appendChild(row);
+        }
+      },
+
+      passesKeywordFilter: function(item) {
+        if (this.keywordFilter === 'ALL') return true;
+        var counts = item.colorCounts || {};
+        if (this.keywordFilter === 'ACTIVE') {
+          return (counts.active || 0) > 0;
+        }
+        if (this.keywordFilter === 'DISCONTINUE_UNKNOWN') {
+          return (counts.discontinueUnknown || 0) > 0;
+        }
+        if (this.keywordFilter === 'DISCONTINUED') {
+          return (counts.discontinued || 0) > 0;
+        }
+        return true;
+      },
+
+      getKeywordStatusLabel: function(item) {
+        var counts = item.colorCounts || {};
+        if ((counts.discontinued || 0) > 0 && (counts.active || 0) === 0 && (counts.discontinueUnknown || 0) === 0) {
+          return '단종';
+        }
+        if ((counts.discontinueUnknown || 0) > 0 && (counts.active || 0) === 0) {
+          return '단종 예정';
+        }
+        if ((counts.discontinued || 0) > 0 || (counts.discontinueUnknown || 0) > 0) {
+          return '혼합';
+        }
+        return '활성';
+      },
+
+      buildKeywordEmptyMessage: function() {
+        var meta = this.keywordMeta || {};
+        var suggestions = meta.suggestions || [];
+        var tips = meta.tips || [];
+        var lines = ['검색 결과가 없습니다.'];
+
+        if (suggestions.length > 0) {
+          lines.push('유사 키워드: ' + suggestions.join(', '));
+        }
+        if (tips.length > 0) {
+          lines = lines.concat(tips);
+        }
+
+        return lines.join(' ');
+      },
+
+      backToKeywordInput: function() {
+        this.keywordReturnEnabled = false;
+        this.showSection('input');
+      },
+
+      backToKeywordResults: function() {
+        if (!this.keywordReturnEnabled) {
+          this.showSection('input');
+          return;
+        }
+        this.renderKeywordTabs();
+        this.renderKeywordResults();
+        this.showSection('keyword-results');
+      },
+
+      openQuantityView: function(item, enableReturn) {
+        if (!item) return;
+
+        this.keywordReturnEnabled = !!enableReturn;
+        this.setKeyboardMode(false);
+        this.saveHistoryItem({
+          type: enableReturn ? 'search' : 'quick',
+          description: item.description,
+          company: item.company,
+          primaryBarcode: item.primaryBarcode
+        });
+
+        this.processing = true;
+        this.showSection('loading');
+
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function(result) {
+            self.handleSearchSuccess(result);
+          })
+          .withFailureHandler(function(error) {
+            self.handleSearchError(error);
+          })
+          .getQuantityViewByDescription(item.description, item.company, item.primaryBarcode);
+      },
+
+      // ========================================
+      // 컬러 통계 표시 (고정 위치)
+      // ========================================
+      displayColorStats: function(meta) {
+        // DOM 표시 부분 주석 처리 (공간 확보) - 데이터는 정상 처리됨
+        /*
+        var statsContainer = document.getElementById('color-stats-container');
+        var statsContent = document.getElementById('color-stats-content');
+
+        if (!meta || !meta.colorStats) {
+          statsContainer.classList.remove('visible');
+          return;
+        }
+
+        var stats = meta.colorStats;
+        statsContent.innerHTML =
+          '<div class="stat-item">' +
+            '<span class="stat-label">전체</span>' +
+            '<span class="stat-value">' + stats.total + '</span>' +
+          '</div>' +
+          '<div class="stat-item">' +
+            '<span class="stat-label">활성</span>' +
+            '<span class="stat-value" style="color: #4CAF50;">' + stats.active + '</span>' +
+          '</div>' +
+          '<div class="stat-item">' +
+            '<span class="stat-label">단종 예정</span>' +
+            '<span class="stat-value" style="color: #FF9800;">' + stats.discontinueUnknown + '</span>' +
+          '</div>' +
+          '<div class="stat-item">' +
+            '<span class="stat-label">단종</span>' +
+            '<span class="stat-value" style="color: #f44336;">' + stats.discontinued + '</span>' +
+          '</div>';
+
+        statsContainer.classList.add('visible');
+        */
       },
       
       // 검색 실패
@@ -1255,34 +2307,59 @@
       // 제품 표시
       displayProducts: function() {
         this.productsTableBody.innerHTML = '';
-        
+
         var theme = this.currentCompany === 'OUTRE' ? 'theme-outre' : 'theme-sng';
-        
+
         for (var i = 0; i < this.products.length; i++) {
           var product = this.products[i];
           var row = this.productsTableBody.insertRow();
           row.dataset.index = i;
-          
+
+          if (product.isGroupHeader) {
+            row.className = 'group-header-row';
+            var headerCell = row.insertCell(0);
+            headerCell.colSpan = 4;
+            headerCell.className = 'group-header-cell';
+            headerCell.textContent = product.itemName || '';
+            continue;
+          }
+
+          // ========================================
+          // 상태별 행 클래스 적용
+          // ========================================
+          var statusConfig = getStatusConfig(product.status);
+          row.className = statusConfig.rowClass;
+
           var self = this;
           row.onclick = (function(index) {
             return function() {
               self.selectRow(index);
             };
           })(i);
-          
+
           // 수량 (첫 번째 컬럼)
           var qtyCell = row.insertCell(0);
+          qtyCell.className = 'qty-col';
           var qtyInput = document.createElement('input');
           qtyInput.type = 'number';
           qtyInput.className = 'quantity-input ' + theme;
           qtyInput.value = product.quantity || 0;
           qtyInput.min = 0;
           qtyInput.inputMode = 'numeric';
-          
+
+          // ========================================
+          // 상태별 입력 제어
+          // ========================================
+          if (!statusConfig.allowInput) {
+            qtyInput.disabled = true;
+            qtyInput.value = 0;
+            product.quantity = 0;
+          }
+
           qtyInput.onfocus = function() {
             this.blur();
           };
-          
+
           qtyInput.onclick = (function(index, input) {
             return function(e) {
               e.stopPropagation();
@@ -1290,7 +2367,7 @@
               self.selectRow(index);
             };
           })(i, qtyInput);
-          
+
           qtyInput.oninput = (function(index, input) {
             return function() {
               var val = parseInt(input.value) || 0;
@@ -1298,24 +2375,52 @@
               input.value = self.products[index].quantity;
             };
           })(i, qtyInput);
-          
+
           qtyCell.appendChild(qtyInput);
-          
-          // ITEM NAME (두 번째 컬럼)
-          var nameCell = row.insertCell(1);
-          nameCell.textContent = product.itemName || '';
-          nameCell.style.fontWeight = '600';
-          
-          // COLOR (세 번째 컬럼)
-          var colorCell = row.insertCell(2);
+
+          // 입력 불가 라벨 추가 (DISCONTINUED)
+          if (!statusConfig.allowInput) {
+            var disabledLabel = document.createElement('div');
+            disabledLabel.className = 'input-disabled-label';
+            disabledLabel.textContent = '입력 불가';
+            qtyCell.appendChild(disabledLabel);
+          }
+
+          // COLOR (두 번째 컬럼) + 상태 배지
+          var colorCell = row.insertCell(1);
+          colorCell.className = 'color-col';
           colorCell.textContent = product.color || '';
-          
-          // 회사 뱃지 (네 번째 컬럼)
-          var companyCell = row.insertCell(3);
-          var badge = document.createElement('span');
-          badge.className = 'company-badge ' + (product.company === 'OUTRE' ? 'outre' : 'sng');
-          badge.textContent = product.company;
-          companyCell.appendChild(badge);
+
+          // ========================================
+          // 상태 배지 추가
+          // ========================================
+          if (statusConfig.showBadge) {
+            var badge = document.createElement('span');
+            badge.className = 'status-badge ' + statusConfig.badgeClass;
+            badge.textContent = statusConfig.label;
+            colorCell.appendChild(badge);
+          }
+
+          if (product.backorder2mo > 0) {
+            colorCell.className += ' color-backorder';
+          } else if (product.shipped12mo > 0) {
+            colorCell.className += ' color-shipped';
+          }
+
+          var shippedCell = row.insertCell(2);
+          shippedCell.className = 'shipped-col';
+          var shippedValue = product.shipped12mo;
+          if (shippedValue === undefined || shippedValue === null || isNaN(shippedValue)) {
+            shippedValue = 0;
+          }
+          shippedCell.textContent = shippedValue;
+
+          var priceCell = row.insertCell(3);
+          priceCell.className = 'price-col';
+          var priceText = document.createElement('div');
+          priceText.className = 'price-text';
+          priceText.textContent = product.priceHistory || '';
+          priceCell.appendChild(priceText);
         }
       },
       
@@ -1369,6 +2474,16 @@
       
       // 수량 조절
       adjustQuantity: function(amount) {
+        if (this.allMode) {
+          for (var i = 0; i < this.products.length; i++) {
+            this.products[i].quantity = Math.max(0, (this.products[i].quantity || 0) + amount);
+          }
+          this.displayProducts();
+          this.allMode = false;
+          this.updateAllToggle();
+          return;
+        }
+        
         if (this.selectedRow === -1) return;
         
         this.products[this.selectedRow].quantity = Math.max(0, 
@@ -1380,11 +2495,33 @@
       
       // 수량 초기화
       clearQuantity: function() {
+        if (this.allMode) {
+          for (var i = 0; i < this.products.length; i++) {
+            this.products[i].quantity = 0;
+          }
+          this.displayProducts();
+          this.allMode = false;
+          this.updateAllToggle();
+          return;
+        }
+        
         if (this.selectedRow === -1) return;
         
         this.products[this.selectedRow].quantity = 0;
         this.displayProducts();
         this.selectRow(this.selectedRow);
+      },
+      
+      toggleAllMode: function() {
+        this.allMode = !this.allMode;
+        this.updateAllToggle();
+      },
+      
+      updateAllToggle: function() {
+        var allBtn = document.querySelector('.qty-btn.all-toggle');
+        if (allBtn) {
+          allBtn.classList.toggle('active', this.allMode);
+        }
       },
       
       // 주문에 추가
@@ -1552,10 +2689,23 @@
         this.selectedRow = -1;
         this.processing = false;
         this.currentCompany = null;
+        this.allMode = false;
+        this.keywordReturnEnabled = false;
         this.barcodeDisplay.value = '';
+        if (this.resultItemName) {
+          this.resultItemName.textContent = '';
+        }
+        if (this.resultCompanyBadge) {
+          this.resultCompanyBadge.textContent = '';
+          this.resultCompanyBadge.className = 'company-badge results-company-badge';
+        }
+        this.updateAllToggle();
         
         // 초기 테마로 복귀
         this.applyTheme(null);
+
+        // 기본 스캔 모드로 복귀
+        this.setKeyboardMode(false);
         
         this.showSection('input');
       },
@@ -1565,11 +2715,12 @@
         var header = document.querySelector('.header');
         
         this.inputSection.style.display = section === 'input' ? 'block' : 'none';
-        this.resultsSection.style.display = section === 'results' ? 'block' : 'none';
+        this.resultsSection.style.display = section === 'results' ? 'flex' : 'none';
+        this.keywordResultsSection.style.display = section === 'keyword-results' ? 'flex' : 'none';
         this.loading.style.display = section === 'loading' ? 'block' : 'none';
         
-        // 수량 입력 화면에서는 헤더 숨김
-        if (section === 'results') {
+        // 결과/키워드 화면에서는 헤더 숨김
+        if (section === 'results' || section === 'keyword-results') {
           header.style.display = 'none';
         } else {
           header.style.display = 'block';
@@ -1586,6 +2737,234 @@
           self.alertMessage.className = '';
         }, duration || 3000);
       },
+
+      // ===== 최근 검색 / 즐겨찾기 =====
+      buildHistoryKey: function(item) {
+        return [item.description, item.company, item.primaryBarcode].join('||');
+      },
+
+      isItemOrdered: function(item) {
+        if (!item) return false;
+        if (item.hasOrder) return true;
+        return (item.primaryShipped12mo || 0) > 0;
+      },
+
+      loadLocalHistory: function() {
+        try {
+          this.history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+        } catch (e) {
+          this.history = [];
+        }
+      },
+
+      loadLocalFavorites: function() {
+        try {
+          this.favorites = JSON.parse(localStorage.getItem('searchFavorites') || '[]');
+        } catch (e) {
+          this.favorites = [];
+        }
+      },
+
+      saveHistoryItem: function(item) {
+        if (!item || !item.description || !item.company || !item.primaryBarcode) return;
+        if (item.hasOrder === undefined) {
+          item.hasOrder = (item.primaryShipped12mo || 0) > 0;
+        }
+        var key = this.buildHistoryKey(item);
+        var next = [item];
+        for (var i = 0; i < this.history.length; i++) {
+          if (this.buildHistoryKey(this.history[i]) !== key) {
+            next.push(this.history[i]);
+          }
+        }
+        this.history = next.slice(0, 10);
+        localStorage.setItem('searchHistory', JSON.stringify(this.history));
+        this.renderHistory();
+
+        google.script.run
+          .withFailureHandler(function() {
+            console.log('서버 히스토리 백업 실패');
+          })
+          .saveHistoryToServer(item);
+      },
+
+      recordHistoryFromResult: function(result) {
+        if (!result || !result.meta || !result.meta.scannedProduct) return;
+        var product = result.meta.scannedProduct;
+        if (!product.itemName || !product.barcode) return;
+
+        var shipped12mo = 0;
+        if (result.products && result.products.length > 0) {
+          for (var i = 0; i < result.products.length; i++) {
+            if (result.products[i].barcode === product.barcode) {
+              shipped12mo = result.products[i].shipped12mo || 0;
+              break;
+            }
+          }
+        }
+
+        this.saveHistoryItem({
+          type: 'scan',
+          description: product.itemName,
+          company: result.company,
+          primaryBarcode: product.barcode,
+          hasOrder: shipped12mo > 0
+        });
+      },
+
+      restoreHistoryFromServer: function() {
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function(serverHistory) {
+            if (!serverHistory || serverHistory.length === 0) return;
+            var merged = serverHistory.slice();
+            var existing = self.history || [];
+            var map = {};
+            for (var i = 0; i < merged.length; i++) {
+              map[self.buildHistoryKey(merged[i])] = true;
+            }
+            for (var j = 0; j < existing.length; j++) {
+              var key = self.buildHistoryKey(existing[j]);
+              if (!map[key]) {
+                merged.push(existing[j]);
+              }
+            }
+            self.history = merged.slice(0, 10);
+            localStorage.setItem('searchHistory', JSON.stringify(self.history));
+            self.renderHistory();
+          })
+          .getHistoryFromServer();
+      },
+
+      renderHistory: function() {
+        if (!this.historyList || !this.historyEmpty) return;
+        this.historyList.innerHTML = '';
+        if (!this.history || this.history.length === 0) {
+          this.historyEmpty.style.display = 'block';
+          return;
+        }
+        this.historyEmpty.style.display = 'none';
+
+        for (var i = 0; i < this.history.length; i++) {
+          var item = this.history[i];
+          var pill = document.createElement('div');
+          pill.className = 'quick-item';
+          pill.onclick = this.openQuantityView.bind(this, item, false);
+
+          var text = document.createElement('span');
+          text.textContent = item.description;
+          if (this.isItemOrdered(item)) {
+            text.className = 'text-shipped';
+          }
+
+          var company = document.createElement('span');
+          company.className = 'company-pill ' + (item.company === 'OUTRE' ? 'outre' : 'sng');
+          company.textContent = item.company;
+
+          pill.appendChild(text);
+          pill.appendChild(company);
+          this.historyList.appendChild(pill);
+        }
+      },
+
+      renderFavorites: function() {
+        if (!this.favoritesList || !this.favoritesEmpty) return;
+        this.favoritesList.innerHTML = '';
+        if (!this.favorites || this.favorites.length === 0) {
+          this.favoritesEmpty.style.display = 'block';
+          return;
+        }
+        this.favoritesEmpty.style.display = 'none';
+
+        for (var i = 0; i < this.favorites.length; i++) {
+          var item = this.favorites[i];
+          var pill = document.createElement('div');
+          pill.className = 'quick-item';
+          pill.onclick = this.openQuantityView.bind(this, item, false);
+
+          var text = document.createElement('span');
+          text.textContent = item.description;
+          if (this.isItemOrdered(item)) {
+            text.className = 'text-shipped';
+          }
+
+          var company = document.createElement('span');
+          company.className = 'company-pill ' + (item.company === 'OUTRE' ? 'outre' : 'sng');
+          company.textContent = item.company;
+
+          pill.appendChild(text);
+          pill.appendChild(company);
+          this.favoritesList.appendChild(pill);
+        }
+      },
+
+      isFavorite: function(item) {
+        if (!item) return false;
+        var key = this.buildHistoryKey(item);
+        for (var i = 0; i < this.favorites.length; i++) {
+          if (this.buildHistoryKey(this.favorites[i]) === key) {
+            return true;
+          }
+        }
+        return false;
+      },
+
+      toggleFavorite: function(item) {
+        if (!item) return;
+        if (item.hasOrder === undefined) {
+          item.hasOrder = (item.primaryShipped12mo || 0) > 0;
+        }
+        var key = this.buildHistoryKey(item);
+        var next = [];
+        var removed = false;
+
+        for (var i = 0; i < this.favorites.length; i++) {
+          if (this.buildHistoryKey(this.favorites[i]) !== key) {
+            next.push(this.favorites[i]);
+          } else {
+            removed = true;
+          }
+        }
+
+        if (!removed) {
+          next.unshift(item);
+        }
+
+        this.favorites = next.slice(0, 20);
+        localStorage.setItem('searchFavorites', JSON.stringify(this.favorites));
+        this.renderFavorites();
+        this.renderKeywordResults();
+
+        google.script.run
+          .withFailureHandler(function() {
+            console.log('서버 즐겨찾기 백업 실패');
+          })
+          .saveFavoriteToServer(item, removed ? 'remove' : 'add');
+      },
+
+      restoreFavoritesFromServer: function() {
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function(serverFavorites) {
+            if (!serverFavorites || serverFavorites.length === 0) return;
+            var merged = serverFavorites.slice();
+            var map = {};
+            for (var i = 0; i < merged.length; i++) {
+              map[self.buildHistoryKey(merged[i])] = true;
+            }
+            for (var j = 0; j < self.favorites.length; j++) {
+              var key = self.buildHistoryKey(self.favorites[j]);
+              if (!map[key]) {
+                merged.push(self.favorites[j]);
+              }
+            }
+            self.favorites = merged.slice(0, 20);
+            localStorage.setItem('searchFavorites', JSON.stringify(self.favorites));
+            self.renderFavorites();
+            self.renderKeywordResults();
+          })
+          .getFavoritesFromServer();
+      },
       
       // ===== 카메라 기능 (ZXing - 강력한 모바일 지원) =====
       
@@ -1595,6 +2974,7 @@
       
       openCamera: function() {
         console.log('카메라 열기');
+        this.setKeyboardMode(false);
         this.cameraModal.classList.add('active');
         this.startCamera();
       },
