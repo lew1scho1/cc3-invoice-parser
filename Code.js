@@ -64,11 +64,11 @@ function initializeSheets() {
     var requiredSheets = [
       {
         name: 'Outre Active DB',
-        headers: ['ITEM GROUP', 'ITEM NUMBER', 'ITEM NAME', 'COLOR', 'BARCODE']
+        headers: ['ITEM GROUP', 'ITEM NUMBER', 'ITEM NAME', 'COLOR', 'BARCODE', 'first_seen_ym', 'last_seen_ym', 'status', 'PRIMARY BARCODE']
       },
       {
         name: 'SNG Active DB',
-        headers: ['Class', 'Old Item', 'Old Item Code', 'Item', 'Item Code', 'Color', 'Description', 'Barcode']
+        headers: ['Class', 'Old Item', 'Old Item Code', 'Item', 'Item Code', 'Color', 'Description', 'Barcode', 'first_seen_ym', 'last_seen_ym', 'status', 'PRIMARY BARCODE']
       },
       {
         name: 'ORDER_OUTRE',

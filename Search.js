@@ -2,6 +2,8 @@
 // SEARCH.GS - 검색 관련 함수
 // ============================================================================
 
+var PRIMARY_BARCODE_HEADER = 'PRIMARY BARCODE';
+
 /**
  * 특정 회사 DB에서 바코드 검색
  */
@@ -226,8 +228,11 @@ function formatPriceValue(value) {
   if (value === null || value === undefined) return '';
   if (typeof value === 'number') {
     if (isNaN(value)) return '';
-    if (Math.floor(value) === value) return value.toString();
-    return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    return value.toFixed(2);
+  }
+  var parsed = parseFloat(value);
+  if (!isNaN(parsed)) {
+    return parsed.toFixed(2);
   }
   return String(value);
 }
@@ -315,6 +320,9 @@ function buildInvoiceMetricsMap(companyKey) {
   
   var dateCol = colMap['Invoice Date'];
   var upcCol = colMap['UPC'];
+  if (upcCol === undefined) {
+    upcCol = colMap['ITEM CODE'];
+  }
   var qtyCol = colMap['Qty Shipped'];
   var priceCol = colMap['Unit Price'];
   var orderedCol = colMap['Qty Ordered'];
@@ -373,11 +381,9 @@ function buildInvoiceMetricsMap(companyKey) {
       if (isNaN(orderedQty)) orderedQty = 0;
       
       var backorderQty = orderedQty - qty;
-      if (backorderQty > 0) {
-        if (!metrics[upcKey].backorderDate || invoiceDate > metrics[upcKey].backorderDate) {
-          metrics[upcKey].backorder = backorderQty;
-          metrics[upcKey].backorderDate = invoiceDate;
-        }
+      if (!metrics[upcKey].backorderDate || invoiceDate > metrics[upcKey].backorderDate) {
+        metrics[upcKey].backorder = Math.max(0, backorderQty);
+        metrics[upcKey].backorderDate = invoiceDate;
       }
     }
   }
@@ -440,11 +446,16 @@ function attachInvoiceMetricsToProducts(products, companyKey) {
   
   var metricsMap = buildInvoiceMetricsMap(companyKey);
   var orderMap = buildOrderQuantityMap(companyKey);
+  var orderedByItemName = {};
   
   for (var i = 0; i < products.length; i++) {
     var upcKey = normalizeInvoiceUpc(products[i].barcode);
+    var orderKey = companyKey === 'SNG' ? normalizeInvoiceUpc(products[i].itemNumber || '') : upcKey;
     var metrics = metricsMap[upcKey];
-    var orderQty = orderMap[upcKey] || 0;
+    var orderQty = orderMap[orderKey] || 0;
+    if (orderQty === 0 && companyKey === 'SNG' && upcKey) {
+      orderQty = orderMap[upcKey] || 0;
+    }
     
     products[i].shipped12mo = metrics ? metrics.shipped12mo : 0;
     products[i].priceHistory = metrics ? metrics.priceHistory : '';
@@ -453,9 +464,49 @@ function attachInvoiceMetricsToProducts(products, companyKey) {
     if (orderQty > 0) {
       products[i].quantity = orderQty;
       products[i].cartQuantity = orderQty;
+      products[i].backorderApplied = false;
+      if (products[i].itemName) {
+        orderedByItemName[products[i].itemName] = true;
+      }
     } else if (products[i].backorder2mo > 0) {
       products[i].quantity = products[i].backorder2mo;
       products[i].backorderApplied = true;
+    }
+  }
+
+  for (var i = 0; i < products.length; i++) {
+    if (products[i].isGroupHeader) continue;
+    if (!products[i].itemName) continue;
+    if (orderedByItemName[products[i].itemName] && products[i].backorderApplied) {
+      products[i].backorderApplied = false;
+      products[i].quantity = 0;
+    }
+  }
+
+  var priceByItem = {};
+  var priceByBase = {};
+  for (var j = 0; j < products.length; j++) {
+    if (products[j].isGroupHeader) continue;
+    if (products[j].priceHistory && !priceByItem[products[j].itemName]) {
+      priceByItem[products[j].itemName] = products[j].priceHistory;
+    }
+    var baseKey = normalizeLengthBase(products[j].itemName);
+    if (products[j].priceHistory && baseKey && !priceByBase[baseKey]) {
+      priceByBase[baseKey] = products[j].priceHistory;
+    }
+  }
+
+  for (var k = 0; k < products.length; k++) {
+    if (products[k].isGroupHeader) continue;
+    if (!products[k].priceHistory) {
+      var fallback = priceByItem[products[k].itemName];
+      if (!fallback) {
+        var baseKey = normalizeLengthBase(products[k].itemName);
+        fallback = baseKey ? priceByBase[baseKey] : '';
+      }
+      if (fallback) {
+        products[k].priceHistory = fallback;
+      }
     }
   }
   
@@ -480,12 +531,30 @@ function searchBarcode(barcode) {
 
     if (outreResult && outreResult.products && outreResult.products.length > 0) {
       debugLog('OUTRE에서 발견');
-      return buildSearchResponse(barcodeStr, 'OUTRE', outreResult);
+      var outreItemName = '';
+      for (var o = 0; o < outreResult.products.length; o++) {
+        if (outreResult.products[o].isGroupHeader) continue;
+        if (outreResult.products[o].barcode && outreResult.products[o].barcode.toString() === barcodeStr) {
+          outreItemName = outreResult.products[o].itemName || '';
+          break;
+        }
+      }
+      var outrePrimary = outreItemName ? resolvePrimaryBarcodeForDescription(outreItemName, 'OUTRE', barcodeStr) : barcodeStr;
+      return buildSearchResponse(barcodeStr, 'OUTRE', outreResult, outrePrimary || barcodeStr);
     }
 
     if (sngResult && sngResult.products && sngResult.products.length > 0) {
       debugLog('SNG에서 발견');
-      return buildSearchResponse(barcodeStr, 'SNG', sngResult);
+      var sngItemName = '';
+      for (var s = 0; s < sngResult.products.length; s++) {
+        if (sngResult.products[s].isGroupHeader) continue;
+        if (sngResult.products[s].barcode && sngResult.products[s].barcode.toString() === barcodeStr) {
+          sngItemName = sngResult.products[s].itemName || '';
+          break;
+        }
+      }
+      var sngPrimary = sngItemName ? resolvePrimaryBarcodeForDescription(sngItemName, 'SNG', barcodeStr) : barcodeStr;
+      return buildSearchResponse(barcodeStr, 'SNG', sngResult, sngPrimary || barcodeStr);
     }
 
     return {
@@ -653,12 +722,34 @@ function searchProduct(searchInput) {
       
       var outreResult = searchByText(input, 'OUTRE');
       if (outreResult.success) {
-        return outreResult;
+        var firstOutre = null;
+        for (var o = 0; o < outreResult.products.length; o++) {
+          if (!outreResult.products[o].isGroupHeader) {
+            firstOutre = outreResult.products[o];
+            break;
+          }
+        }
+        var outreDescription = firstOutre ? firstOutre.itemName : '';
+        var outrePreferred = firstOutre && isValidBarcode(firstOutre.barcode) ? firstOutre.barcode : '';
+        var outrePrimary = resolvePrimaryBarcodeForDescription(outreDescription, 'OUTRE', outrePreferred) || outrePreferred;
+        var outreStats = calculateColorStatistics(outreResult.products);
+        return buildSearchResponse('', 'OUTRE', outreStats, outrePrimary);
       }
       
       var sngResult = searchByText(input, 'SNG');
       if (sngResult.success) {
-        return sngResult;
+        var firstSng = null;
+        for (var s = 0; s < sngResult.products.length; s++) {
+          if (!sngResult.products[s].isGroupHeader) {
+            firstSng = sngResult.products[s];
+            break;
+          }
+        }
+        var sngDescription = firstSng ? firstSng.itemName : '';
+        var sngPreferred = firstSng && isValidBarcode(firstSng.barcode) ? firstSng.barcode : '';
+        var sngPrimary = resolvePrimaryBarcodeForDescription(sngDescription, 'SNG', sngPreferred) || sngPreferred;
+        var sngStats = calculateColorStatistics(sngResult.products);
+        return buildSearchResponse('', 'SNG', sngStats, sngPrimary);
       }
       
       return {
@@ -689,9 +780,10 @@ function searchProduct(searchInput) {
  * @param {object} searchResult - searchBarcodeInCompany 결과 {products, colorStats}
  * @return {object} 표준 응답 스키마
  */
-function buildSearchResponse(scannedBarcode, company, searchResult) {
+function buildSearchResponse(scannedBarcode, company, searchResult, primaryBarcode) {
   var products = searchResult.products || [];
   var colorStats = searchResult.colorStats || null;
+  var resolvedPrimaryBarcode = primaryBarcode || scannedBarcode || '';
 
   // 스캔한 바코드와 일치하는 제품 찾기 (scannedProduct)
   var scannedProduct = null;
@@ -739,11 +831,135 @@ function buildSearchResponse(scannedBarcode, company, searchResult) {
     products: products,
     meta: {
       scannedBarcode: scannedBarcode,
+      primaryBarcode: resolvedPrimaryBarcode,
       scannedProduct: scannedProduct,
       colorStats: colorStats,
       alert: alert
     }
   };
+}
+
+function resolvePrimaryBarcodeForDescription(description, companyKey, preferredBarcode) {
+  var company = CONFIG.COMPANIES[companyKey];
+  if (!company || !description) return '';
+
+  var sheet = getDbSheet(company.dbSheet);
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return '';
+
+  var headers = data[0];
+  var colMap = getColumnMap(headers);
+  var itemNameCol = colMap[company.columns.ITEM_NAME];
+  var barcodeCol = colMap[company.columns.BARCODE];
+  var statusCol = colMap['status'];
+  var primaryCol = colMap[PRIMARY_BARCODE_HEADER];
+
+  if (itemNameCol === undefined || barcodeCol === undefined) return '';
+
+  var target = description.toString().trim();
+  var normalizedTarget = normalizeSearchQuery(target);
+  var rows = [];
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var itemName = row[itemNameCol];
+    if (!itemName) continue;
+    var itemText = itemName.toString().trim();
+    if (itemText !== target) {
+      if (!normalizedTarget) continue;
+      if (normalizeSearchQuery(itemText) !== normalizedTarget) continue;
+    }
+
+    var barcode = row[barcodeCol];
+    if (!barcode) continue;
+
+    rows.push({
+      rowIndex: i + 1,
+      barcode: barcode,
+      status: statusCol !== undefined ? (row[statusCol] || CONFIG.STATUS.ACTIVE) : CONFIG.STATUS.ACTIVE,
+      primaryBarcode: primaryCol !== undefined ? row[primaryCol] : ''
+    });
+  }
+
+  if (rows.length === 0) return '';
+
+  function normalizeBarcodeText(value) {
+    if (value === null || value === undefined) return '';
+    return value.toString().trim();
+  }
+
+  var selectedIndex = -1;
+  var preferredText = normalizeBarcodeText(preferredBarcode);
+
+  if (preferredText) {
+    for (var p = 0; p < rows.length; p++) {
+      if (normalizeBarcodeText(rows[p].barcode) === preferredText) {
+        selectedIndex = p;
+        break;
+      }
+    }
+  }
+
+  if (selectedIndex === -1 && primaryCol !== undefined) {
+    for (var e = 0; e < rows.length; e++) {
+      var existingPrimary = normalizeBarcodeText(rows[e].primaryBarcode);
+      if (existingPrimary) {
+        preferredText = existingPrimary;
+        break;
+      }
+    }
+    if (preferredText) {
+      for (var q = 0; q < rows.length; q++) {
+        if (normalizeBarcodeText(rows[q].barcode) === preferredText) {
+          selectedIndex = q;
+          break;
+        }
+      }
+    }
+  }
+
+  if (selectedIndex === -1) {
+    selectedIndex = 0;
+  }
+
+  if (rows[selectedIndex].status === CONFIG.STATUS.DISCONTINUED && selectedIndex + 1 < rows.length) {
+    selectedIndex = selectedIndex + 1;
+  }
+
+  var resolved = normalizeBarcodeText(rows[selectedIndex].barcode);
+  if (!resolved || !isValidBarcode(resolved)) return '';
+
+  if (primaryCol !== undefined) {
+    for (var r = 0; r < rows.length; r++) {
+      sheet.getRange(rows[r].rowIndex, primaryCol + 1).setValue(resolved);
+    }
+  }
+
+  updatePrimaryBarcodeInSearchIndex(companyKey, target, resolved);
+
+  return resolved;
+}
+
+function updatePrimaryBarcodeInSearchIndex(companyKey, description, primaryBarcode) {
+  var sheet;
+  try {
+    sheet = getSearchIndexSheet(companyKey);
+  } catch (error) {
+    return;
+  }
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return;
+
+  var normalizedTarget = normalizeSearchQuery(description);
+  for (var i = 1; i < data.length; i++) {
+    var rowDesc = data[i][0];
+    if (!rowDesc) continue;
+    if (normalizeSearchQuery(rowDesc) === normalizedTarget) {
+      sheet.getRange(i + 1, 3).setValue(primaryBarcode);
+      return;
+    }
+  }
 }
 
 // ============================================================================
@@ -796,6 +1012,10 @@ function normalizeSearchQuery(text) {
 
 function normalizeSearchTokens(text) {
   if (!text) return [];
+  var normalizedAll = normalizeSearchQuery(text);
+  if (normalizedAll && normalizedAll.length <= 2) {
+    return [normalizedAll];
+  }
   var rawTokens = text.toString().toUpperCase().split(/[^A-Z0-9]+/);
   var tokens = [];
   for (var i = 0; i < rawTokens.length; i++) {
@@ -837,7 +1057,7 @@ function selectPrimaryBarcode(colors) {
     filtered = colors.slice();
   }
 
-  var priorityColors = ['1B', '1', '2', '4', '27', '30', 'NA', 'NATURALBLACK'];
+  var priorityColors = ['1', '1B', '2', '4', '27', '30', 'NA', 'NATURALBLACK'];
   for (var i = 0; i < priorityColors.length; i++) {
     var priority = normalizeColor(priorityColors[i]);
     var matches = filtered.filter(function(c) {
@@ -904,6 +1124,7 @@ function rebuildSearchIndex(companyKey, uploadDate) {
   var colorCol = colMap[company.columns.COLOR];
   var barcodeCol = colMap[company.columns.BARCODE];
   var statusCol = colMap['status'];
+  var primaryBarcodeCol = colMap[PRIMARY_BARCODE_HEADER];
   var firstSeenCol = colMap['first_seen_date'];
   var lastSeenCol = colMap['last_seen_date'];
 
@@ -925,7 +1146,8 @@ function rebuildSearchIndex(companyKey, uploadDate) {
     if (!descriptionMap[descriptionKey]) {
       descriptionMap[descriptionKey] = {
         itemNumbers: {},
-        colors: []
+        colors: [],
+        primaryBarcode: ''
       };
     }
 
@@ -946,6 +1168,13 @@ function rebuildSearchIndex(companyKey, uploadDate) {
       firstSeenYm: firstSeenCol !== undefined ? formatYm(row[firstSeenCol]) : '',
       shipped12mo: metrics ? metrics.shipped12mo : 0
     });
+
+    if (primaryBarcodeCol !== undefined && !descriptionMap[descriptionKey].primaryBarcode) {
+      var storedPrimary = row[primaryBarcodeCol];
+      if (storedPrimary && isValidBarcode(storedPrimary)) {
+        descriptionMap[descriptionKey].primaryBarcode = storedPrimary;
+      }
+    }
   }
 
   var indexRows = [];
@@ -956,7 +1185,22 @@ function rebuildSearchIndex(companyKey, uploadDate) {
     var colors = entry.colors;
     if (!colors || colors.length === 0) continue;
 
-    var primaryBarcode = selectPrimaryBarcode(colors);
+    var primaryBarcode = entry.primaryBarcode;
+    if (primaryBarcode) {
+      var matchFound = false;
+      for (var pb = 0; pb < colors.length; pb++) {
+        if (colors[pb].barcode.toString() === primaryBarcode.toString()) {
+          matchFound = true;
+          break;
+        }
+      }
+      if (!matchFound || !isValidBarcode(primaryBarcode)) {
+        primaryBarcode = '';
+      }
+    }
+    if (!primaryBarcode) {
+      primaryBarcode = selectPrimaryBarcode(colors);
+    }
     if (!primaryBarcode) continue;
 
     var primaryColor = null;
@@ -1093,6 +1337,11 @@ function searchInIndex(companyKey, normalizedQuery, normalizedTokens) {
 
   var rows = data.slice(1);
   var matches = [];
+  var classDescriptionMap = null;
+
+  if (companyKey === 'SNG' && normalizedQuery && normalizedQuery.length === 2) {
+    classDescriptionMap = getSngClassDescriptionMap(normalizedQuery);
+  }
 
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
@@ -1103,6 +1352,26 @@ function searchInIndex(companyKey, normalizedQuery, normalizedTokens) {
     var normalizedItem = normalizeSearchQuery(itemNumber);
 
     var normalizedCombined = normalizedDesc + ' ' + normalizedItem;
+
+    if (classDescriptionMap) {
+      if (classDescriptionMap[description ? description.toString().trim() : '']) {
+        matches.push({
+          description: description,
+          itemNumber: itemNumber,
+          company: companyKey,
+          primaryBarcode: row[2],
+          colorCounts: {
+            total: row[3],
+            active: row[4],
+            discontinueUnknown: row[5],
+            discontinued: row[6]
+          },
+          dominantStatus: row[7],
+          primaryShipped12mo: row[8]
+        });
+      }
+      continue;
+    }
 
     var exactMatch = normalizedDesc.indexOf(normalizedQuery) > -1 ||
       normalizedItem.indexOf(normalizedQuery) > -1;
@@ -1139,7 +1408,39 @@ function searchInIndex(companyKey, normalizedQuery, normalizedTokens) {
     return (b.primaryShipped12mo || 0) - (a.primaryShipped12mo || 0);
   });
 
-  return matches.slice(0, 100);
+  return companyKey === 'SNG' ? matches : matches.slice(0, 100);
+}
+
+function getSngClassDescriptionMap(classKey) {
+  var company = CONFIG.COMPANIES.SNG;
+  if (!company) return null;
+
+  var normalizedClass = normalizeSearchQuery(classKey);
+  if (!normalizedClass || normalizedClass.length !== 2) return null;
+
+  var sheet = getDbSheet(company.dbSheet);
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return null;
+
+  var headers = data[0];
+  var colMap = getColumnMap(headers);
+  var descCol = colMap[company.columns.ITEM_NAME];
+  if (descCol === undefined) return null;
+
+  var map = {};
+  var found = false;
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var classValue = row[0];
+    if (!classValue) continue;
+    if (normalizeSearchQuery(classValue) !== normalizedClass) continue;
+    found = true;
+    var desc = row[descCol];
+    if (!desc) continue;
+    map[desc.toString().trim()] = true;
+  }
+
+  return found ? map : null;
 }
 
 function generateKeywordSuggestions(query) {
@@ -1182,19 +1483,63 @@ function getQuantityViewByDescription(description, companyKey, primaryBarcode) {
       return { success: false, error: 'No results found.' };
     }
 
-    var products = buildProductsByDescription(description, companyKey);
-    if (!products || products.length === 0) {
-      if (primaryBarcode) {
+    var baseProducts = buildProductsByDescription(description, companyKey);
+    if (!baseProducts || baseProducts.length === 0) {
+      if (primaryBarcode && isValidBarcode(primaryBarcode)) {
         return searchBarcode(primaryBarcode);
       }
       return { success: false, error: 'No results found.' };
     }
 
-    products = sortProducts(products);
-    products = attachInvoiceMetricsToProducts(products, companyKey);
+    var resolvedPrimaryBarcode = resolvePrimaryBarcodeForDescription(description, companyKey, primaryBarcode);
+    var groupedDescriptions = [description];
+    if (baseProducts.length <= 4) {
+      var relatedDescriptions = getRelatedDescriptionsByBase(description, companyKey);
+      if (relatedDescriptions.length > 0) {
+        groupedDescriptions = groupedDescriptions.concat(relatedDescriptions);
+      }
+    }
+
+    var products = [];
+    if (groupedDescriptions.length > 1) {
+      var primaryDesc = description;
+      var rest = [];
+      for (var r = 0; r < groupedDescriptions.length; r++) {
+        if (groupedDescriptions[r] !== primaryDesc) {
+          rest.push(groupedDescriptions[r]);
+        }
+      }
+      rest.sort(function(a, b) {
+        return extractInches(a) - extractInches(b);
+      });
+      groupedDescriptions = [primaryDesc].concat(rest);
+
+      var groups = [];
+      var flatProducts = [];
+
+      for (var g = 0; g < groupedDescriptions.length; g++) {
+        var desc = groupedDescriptions[g];
+        var items = buildProductsByDescription(desc, companyKey);
+        if (!items || items.length === 0) continue;
+        items = sortProducts(items);
+        groups.push({ description: desc, items: items });
+        flatProducts = flatProducts.concat(items);
+      }
+
+      flatProducts = attachInvoiceMetricsToProducts(flatProducts, companyKey);
+
+      for (var h = 0; h < groups.length; h++) {
+        products.push({ isGroupHeader: true, itemName: groups[h].description });
+        products = products.concat(groups[h].items);
+      }
+    } else {
+      baseProducts = sortProducts(baseProducts);
+      products = attachInvoiceMetricsToProducts(baseProducts, companyKey);
+    }
+
     var result = calculateColorStatistics(products);
 
-    return buildSearchResponse(primaryBarcode || '', companyKey, result);
+    return buildSearchResponse(primaryBarcode || '', companyKey, result, resolvedPrimaryBarcode || primaryBarcode || '');
   } catch (error) {
     debugLog('getQuantityViewByDescription 오류', { error: error.toString() });
     logError('getQuantityViewByDescription', error.toString(), { description: description, company: companyKey });
@@ -1207,6 +1552,7 @@ function buildProductsByDescription(description, companyKey) {
   if (!company) return [];
 
   var target = description.toString().trim();
+  var normalizedTarget = normalizeSearchQuery(target);
   var sheet = getDbSheet(company.dbSheet);
   var data = sheet.getDataRange().getValues();
   if (data.length < 2) return [];
@@ -1224,7 +1570,12 @@ function buildProductsByDescription(description, companyKey) {
   var products = [];
   for (var i = 1; i < data.length; i++) {
     var itemName = data[i][itemNameCol];
-    if (!itemName || itemName.toString().trim() !== target) continue;
+    if (!itemName) continue;
+    var itemNameValue = itemName.toString().trim();
+    if (itemNameValue !== target) {
+      if (!normalizedTarget) continue;
+      if (normalizeSearchQuery(itemNameValue) !== normalizedTarget) continue;
+    }
 
     var barcode = data[i][barcodeCol];
     if (!barcode) continue;
@@ -1241,6 +1592,45 @@ function buildProductsByDescription(description, companyKey) {
   }
 
   return products;
+}
+
+function normalizeLengthBase(description) {
+  if (!description) return '';
+  var text = description.toString().toUpperCase();
+  text = text.replace(/\b\d+\s*(INCHES|INCH|IN)\b/g, ' ');
+  text = text.replace(/\b\d+\s*\"/g, ' ');
+  text = text.replace(/\s+/g, ' ').trim();
+  return normalizeSearchQuery(text);
+}
+
+function getRelatedDescriptionsByBase(description, companyKey) {
+  var base = normalizeLengthBase(description);
+  if (!base) return [];
+
+  var sheet;
+  try {
+    sheet = getSearchIndexSheet(companyKey);
+  } catch (error) {
+    return [];
+  }
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+
+  var target = description.toString().trim();
+  var related = [];
+
+  for (var i = 1; i < data.length; i++) {
+    var desc = data[i][0];
+    if (!desc) continue;
+    var descText = desc.toString().trim();
+    if (descText === target) continue;
+    if (normalizeLengthBase(descText) === base) {
+      related.push(descText);
+    }
+  }
+
+  return related;
 }
 
 // ============================================================================
@@ -1378,4 +1768,82 @@ function getFavoritesFromServer() {
   });
 
   return items.slice(0, 20);
+}
+
+// ============================================================================
+// 전체 DB 제품 로드 (키워드 검색용)
+// ============================================================================
+
+/**
+ * 전체 DB에서 모든 제품 가져오기 (OUTRE + SNG)
+ * @return {object} { success: true, results: { OUTRE: [...], SNG: [...] } }
+ */
+function getAllProducts() {
+  try {
+    debugLog('getAllProducts 시작');
+
+    var outreProducts = getAllProductsFromCompany('OUTRE');
+    var sngProducts = getAllProductsFromCompany('SNG');
+
+    debugLog('전체 제품 로드 완료', {
+      OUTRE: outreProducts.length,
+      SNG: sngProducts.length
+    });
+
+    return {
+      success: true,
+      results: {
+        OUTRE: outreProducts,
+        SNG: sngProducts
+      }
+    };
+  } catch (error) {
+    debugLog('getAllProducts 오류', { error: error.toString() });
+    logError('getAllProducts', error.toString());
+    return {
+      success: false,
+      error: 'Failed to load products from database.'
+    };
+  }
+}
+
+/**
+ * 특정 회사 DB에서 모든 제품 가져오기 (검색 인덱스 기반)
+ * @param {string} companyKey - 회사 키 (OUTRE, SNG)
+ * @return {Array} 제품 배열
+ */
+function getAllProductsFromCompany(companyKey) {
+  try {
+    var sheet = getSearchIndexSheet(companyKey);
+    var data = sheet.getDataRange().getValues();
+
+    if (data.length < 2) return [];
+
+    var products = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      products.push({
+        description: row[0],
+        itemName: row[0], // itemName = description
+        itemNumber: row[1],
+        company: companyKey,
+        primaryBarcode: row[2],
+        colorCounts: {
+          total: row[3],
+          active: row[4],
+          discontinueUnknown: row[5],
+          discontinued: row[6]
+        },
+        dominantStatus: row[7],
+        primaryShipped12mo: row[8]
+      });
+    }
+
+    debugLog('회사별 제품 로드', { company: companyKey, count: products.length });
+
+    return products;
+  } catch (error) {
+    debugLog('getAllProductsFromCompany 오류', { company: companyKey, error: error.toString() });
+    return [];
+  }
 }

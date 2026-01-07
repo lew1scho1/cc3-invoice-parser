@@ -100,9 +100,7 @@ function parseColorForSorting(color) {
   
   var colorStr = String(color).toUpperCase().trim();
   var original = colorStr;
-  
-  var priorityNumbers = ['1B', '1', '2', '4', '27', '30', '530', '613', '130', '350', '33'];
-  
+
   if (colorStr.indexOf('+') > -1) {
     return {
       priority: 50,
@@ -113,30 +111,30 @@ function parseColorForSorting(color) {
       original: original
     };
   }
-  
+
   var prefixMatch = colorStr.match(/^(T|P|M|OT|DR|OM|OF|FS|GF|SOM)/);
   var prefix = prefixMatch ? prefixMatch[1] : '';
   var remaining = prefix ? colorStr.substring(prefix.length) : colorStr;
-  
+
   var prefixPriority = {
     'T': 1,
     'P': 2,
     'M': 3,
     'OT': 4
   };
-  
+
   var prefixOrder = prefixPriority[prefix] || 99;
-  
+
+  // CRITICAL: 완전 일치 방식으로 우선순위 컬러 추출
+  // "130", "1B0" 같은 부분 일치를 방지하기 위해 정확히 일치하는 것만 추출
   var foundPriorityNums = [];
   var tempRemaining = remaining;
-  
-  for (var i = 0; i < priorityNumbers.length; i++) {
-    var prioNum = priorityNumbers[i];
-    if (tempRemaining.indexOf(prioNum) === 0) {
-      foundPriorityNums.push(prioNum);
-      tempRemaining = tempRemaining.substring(prioNum.length);
-      i = -1;
-    }
+
+  // 우선순위 배열을 정확히 체크 (완전 일치만 허용)
+  if (tempRemaining === '1' || tempRemaining === '1B' || tempRemaining === '2' ||
+      tempRemaining === '4' || tempRemaining === '27' || tempRemaining === '30') {
+    foundPriorityNums.push(tempRemaining);
+    tempRemaining = '';
   }
   
   var otherNums = [];
@@ -184,7 +182,7 @@ function compareColors(colorA, colorB) {
   }
   
   if (a.priority === 1) {
-    var priorityOrder = ['1', '1B', '2', '4', '27', '30', '530', '613', '130', '350', '33'];
+    var priorityOrder = ['1', '1B', '2', '4', '27', '30'];
     var aIndex = priorityOrder.indexOf(a.original);
     var bIndex = priorityOrder.indexOf(b.original);
     return aIndex - bIndex;
@@ -201,8 +199,8 @@ function compareColors(colorA, colorB) {
       return a.prefixOrder - b.prefixOrder;
     }
     
-    var priorityOrder = ['1', '1B', '2', '4', '27', '30', '530', '613', '130', '350', '33'];
-    
+    var priorityOrder = ['1', '1B', '2', '4', '27', '30'];
+
     for (var i = 0; i < Math.max(a.priorityNums.length, b.priorityNums.length); i++) {
       var aPrio = a.priorityNums[i] || '';
       var bPrio = b.priorityNums[i] || '';

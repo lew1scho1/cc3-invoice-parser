@@ -13,7 +13,8 @@ var COMPANY_HEADERS = {
 };
 
 var OUTRE_NEW_HEADERS = ['Item Group', 'Item Name', 'Color', 'UPC Barcode', 'REMARK'];
-var META_HEADERS = ['first_seen_ym', 'last_seen_ym', 'status'];
+var PRIMARY_BARCODE_HEADER = 'PRIMARY BARCODE';
+var META_HEADERS = ['first_seen_ym', 'last_seen_ym', 'status', PRIMARY_BARCODE_HEADER];
 
 var UPLOAD_EVENTS_SHEETS = {
   OUTRE: 'UPLOAD_EVENTS_OUTRE',
@@ -374,7 +375,7 @@ function rebuildActiveSnapshotFromHistory(ss, companyKey, currentActiveYm) {
     var item = grouped[key];
     var baseRow = extractRowByHeaders(item.latestRow, headerMap, COMPANY_HEADERS[companyKey]);
     var status = calculateStatus(item.firstSeen, item.lastSeen, currentActiveYm);
-    outputRows.push(baseRow.concat([item.firstSeen, item.lastSeen, status]));
+    outputRows.push(baseRow.concat([item.firstSeen, item.lastSeen, status, '']));
   }
 
   writeSheetData(activeSheet, activeHeaders, outputRows);
@@ -478,7 +479,8 @@ function readActiveRecords(sheet, headerList) {
       baseRow: baseRow,
       firstSeen: getMetaValue(data[i], headerMap, META_HEADERS[0]),
       lastSeen: getMetaValue(data[i], headerMap, META_HEADERS[1]),
-      status: getMetaValue(data[i], headerMap, META_HEADERS[2])
+      status: getMetaValue(data[i], headerMap, META_HEADERS[2]),
+      primaryBarcode: getMetaValue(data[i], headerMap, PRIMARY_BARCODE_HEADER)
     };
   }
 
@@ -555,7 +557,8 @@ function buildActiveDbRows(uploadRows, uploadDate, companyKey, activeRecords, ou
     // Status calculation
     var status = calculateStatus(firstSeen, lastSeen, uploadDate);
 
-    rows.push(uploadRows[i].concat([firstSeen, lastSeen, status]));
+    var primaryBarcode = existing && existing.primaryBarcode ? existing.primaryBarcode : '';
+    rows.push(uploadRows[i].concat([firstSeen, lastSeen, status, primaryBarcode]));
   }
 
   // Step 2: barcodes missing from upload (keep last_seen)
@@ -569,7 +572,8 @@ function buildActiveDbRows(uploadRows, uploadDate, companyKey, activeRecords, ou
     // Status calculation
     var status = calculateStatus(firstSeen, lastSeen, uploadDate);
 
-    rows.push(record.baseRow.concat([firstSeen, lastSeen, status]));
+    var primaryBarcode = record.primaryBarcode || '';
+    rows.push(record.baseRow.concat([firstSeen, lastSeen, status, primaryBarcode]));
   }
 
   return rows;

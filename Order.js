@@ -24,41 +24,98 @@ function addToOrder(products, companyKey) {
     }
     
     var company = CONFIG.COMPANIES[companyKey];
+
+    function extractLatestPrice(value) {
+      if (value === null || value === undefined) return null;
+      var str = value.toString();
+      var matches = str.match(/\$?[\d,]+(?:\.\d{1,2})?/g);
+      if (!matches || matches.length === 0) return null;
+      var last = matches[matches.length - 1];
+      var num = parseFloat(last.replace(/[^0-9.]/g, ''));
+      return isNaN(num) ? null : num;
+    }
     
     var validProducts = [];
     for (var i = 0; i < products.length; i++) {
+      // ========================================
+      // CRITICAL: 그룹 헤더(구분자) 제외
+      // ========================================
+      if (products[i].isGroupHeader) {
+        debugLog('그룹 헤더 제외', { itemName: products[i].itemName });
+        continue;
+      }
+
       var qty = parseInt(products[i].quantity);
       if (!isNaN(qty) && qty > 0) {
+        var unitPrice = extractLatestPrice(products[i].priceHistory);
+        var extPrice = unitPrice !== null ? unitPrice * qty : null;
         validProducts.push({
           itemName: products[i].itemName || '',
           color: products[i].color || '',
           quantity: qty,
-          barcode: products[i].barcode || ''
+          barcode: products[i].barcode || '',
+          itemNumber: products[i].itemNumber || '',
+          unitPrice: unitPrice,
+          extPrice: extPrice
         });
       }
     }
     
     debugLog('유효한 제품', { count: validProducts.length });
-    
-    if (validProducts.length === 0) {
+
+    // ========================================
+    // CRITICAL: 수량 0인 제품만 있어도 처리 진행
+    // (기존 장바구니에서 삭제해야 하므로)
+    // ========================================
+    var hasAnyProducts = false;
+    for (var i = 0; i < products.length; i++) {
+      if (!products[i].isGroupHeader && products[i].barcode) {
+        hasAnyProducts = true;
+        break;
+      }
+    }
+
+    if (!hasAnyProducts) {
       return {
         success: false,
-        error: '⚠️ 수량이 입력된 제품이 없습니다.'
+        error: '⚠️ 처리할 제품이 없습니다.'
       };
     }
-    
+
     var sheet = getSheet(company.orderSheet);
     
     var lastRow = sheet.getLastRow();
     if (lastRow === 0) {
-      sheet.appendRow(['ITEM NAME', 'COLOR', '수량', 'UPC']);
+      var initialHeaders = ['ITEM NAME', 'COLOR', '수량'];
+      if (companyKey === 'SNG') {
+        initialHeaders.push('ITEM CODE', 'UPC');
+      } else {
+        initialHeaders.push('UPC');
+      }
+      sheet.appendRow(initialHeaders);
       debugLog('ORDER 시트 헤더 생성');
     }
-    
+
     var headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+    // Ensure necessary columns exist
+    if (companyKey === 'SNG') {
+      if (headerRow.indexOf('ITEM CODE') === -1) {
+        sheet.getRange(1, headerRow.length + 1).setValue('ITEM CODE');
+        headerRow.push('ITEM CODE');
+      }
+    }
     if (headerRow.indexOf('UPC') === -1) {
+      sheet.getRange(1, headerRow.length + 1).setValue('UPC');
       headerRow.push('UPC');
-      sheet.getRange(1, headerRow.length).setValue('UPC');
+    }
+    if (headerRow.indexOf('UNIT PRICE') === -1) {
+      sheet.getRange(1, headerRow.length + 1).setValue('UNIT PRICE');
+      headerRow.push('UNIT PRICE');
+    }
+    if (headerRow.indexOf('EXT PRICE') === -1) {
+      sheet.getRange(1, headerRow.length + 1).setValue('EXT PRICE');
+      headerRow.push('EXT PRICE');
     }
     
     var headerMap = getColumnMap(headerRow);
@@ -69,6 +126,39 @@ function addToOrder(products, companyKey) {
       qtyCol = headerMap['?˜ëŸ‰'];
     }
     var upcCol = headerMap['UPC'];
+    var itemCodeCol = companyKey === 'SNG' ? headerMap['ITEM CODE'] : undefined;
+    var unitPriceCol = headerMap['UNIT PRICE'];
+    var extPriceCol = headerMap['EXT PRICE'];
+
+    // ========================================
+    // CRITICAL: 모든 제품(수량 0 포함)의 바코드 수집
+    // 수량 0인 제품도 기존 장바구니에서 삭제해야 함
+    // ========================================
+    var allBarcodeSet = {};
+    for (var i = 0; i < products.length; i++) {
+      if (products[i].isGroupHeader) continue;
+
+      var rawUpc = products[i].barcode;
+      var normalizedUpc = normalizeInvoiceUpc(rawUpc);
+      if (normalizedUpc) {
+        allBarcodeSet[normalizedUpc] = true;
+      }
+    }
+
+    // De-duplication: 기존 장바구니에서 현재 제품들의 바코드 모두 삭제
+    if (upcCol !== undefined && Object.keys(allBarcodeSet).length > 0) {
+      var lastDataRow = sheet.getLastRow();
+      if (lastDataRow > 1) {
+        var existingData = sheet.getRange(2, 1, lastDataRow - 1, sheet.getLastColumn()).getValues();
+        for (var r = existingData.length - 1; r >= 0; r--) {
+          var existingUpc = normalizeInvoiceUpc(existingData[r][upcCol]);
+          if (existingUpc && allBarcodeSet[existingUpc]) {
+            debugLog('기존 장바구니 행 삭제', { barcode: existingUpc });
+            sheet.deleteRow(r + 2);
+          }
+        }
+      }
+    }
     
     var addedCount = 0;
     for (var i = 0; i < validProducts.length; i++) {
@@ -77,7 +167,24 @@ function addToOrder(products, companyKey) {
         row[itemCol] = validProducts[i].itemName;
         row[colorCol] = validProducts[i].color;
         row[qtyCol] = validProducts[i].quantity;
-        row[upcCol] = validProducts[i].barcode;
+        
+        if (companyKey === 'SNG') {
+          if (itemCodeCol !== undefined) {
+            row[itemCodeCol] = validProducts[i].itemNumber;
+          }
+        }
+        if (upcCol !== undefined) {
+          row[upcCol] = validProducts[i].barcode;
+        }
+
+        if (unitPriceCol !== undefined) {
+          row[unitPriceCol] = validProducts[i].unitPrice !== null ?
+            validProducts[i].unitPrice.toFixed(2) : '';
+        }
+        if (extPriceCol !== undefined) {
+          row[extPriceCol] = validProducts[i].extPrice !== null ?
+            validProducts[i].extPrice.toFixed(2) : '';
+        }
         sheet.appendRow(row);
         addedCount++;
       } catch (rowError) {
@@ -85,15 +192,19 @@ function addToOrder(products, companyKey) {
       }
     }
     
+    debugLog('주문 처리 완료', { addedCount: addedCount, validProducts: validProducts.length });
+
+    // ========================================
+    // 수량 0인 제품만 처리한 경우도 성공으로 처리
+    // ========================================
     if (addedCount === 0) {
       return {
-        success: false,
-        error: '❌ 주문 추가에 실패했습니다.'
+        success: true,
+        message: '✅ 장바구니가 업데이트되었습니다.',
+        addedCount: 0
       };
     }
-    
-    debugLog('주문 추가 완료', { addedCount: addedCount });
-    
+
     return {
       success: true,
       message: '✅ ' + addedCount + '개 제품이 주문에 추가되었습니다.',
@@ -117,6 +228,69 @@ function addToOrder(products, companyKey) {
 /**
  * ORDER 시트 데이터 가져오기 (회사별)
  */
+function removeOrderItem(companyKey, upc, color) {
+  try {
+    debugLog('removeOrderItem ?œìž‘', { company: companyKey, upc: upc });
+
+    if (!companyKey || !CONFIG.COMPANIES[companyKey]) {
+      return {
+        success: false,
+        error: '???¬ë°”ë¥??Œì‚¬ ?•ë³´ê°€ ?„ë‹™?ˆë‹¤.'
+      };
+    }
+
+    var normalizedUpc = normalizeInvoiceUpc(upc);
+    if (!normalizedUpc) {
+      return {
+        success: false,
+        error: 'UPCê°€ ìœ íš¨í•˜ì§€ ì•ŠìŠµ?ˆë‹¤.'
+      };
+    }
+
+    var company = CONFIG.COMPANIES[companyKey];
+    var sheet = getSheet(company.orderSheet);
+    var lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      return { success: true, removed: 0 };
+    }
+
+    var headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var headerMap = getColumnMap(headerRow);
+    var upcCol = headerMap['UPC'];
+    if (upcCol === undefined) {
+      return { success: false, error: 'UPC 열을 찾을 수 없습니다.' };
+    }
+    var colorCol = headerMap['COLOR'];
+
+    var data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    var removed = 0;
+    var normalizedColor = color ? normalizeColor(color) : '';
+    for (var i = data.length - 1; i >= 0; i--) {
+      var rowUpc = normalizeInvoiceUpc(data[i][upcCol]);
+      if (rowUpc !== normalizedUpc) continue;
+
+      var rowColor = normalizeColor(data[i][colorCol]);
+      if (rowColor !== normalizedColor) continue;
+      
+      sheet.deleteRow(i + 2);
+      removed++;
+      break; 
+    }
+
+    return {
+      success: true,
+      removed: removed
+    };
+  } catch (error) {
+    debugLog('removeOrderItem ?¤ë¥˜', { error: error.toString() });
+    logError('removeOrderItem', error.toString(), { company: companyKey, upc: upc });
+    return {
+      success: false,
+      error: 'ì‚­ì œ ì¤??¤ë¥˜ê°€ ë°œìƒ?ˆìŠµ?ˆë‹¤.\n' + error.toString()
+    };
+  }
+}
+
 function getOrderData(companyKey) {
   try {
     debugLog('getOrderData 시작', { company: companyKey });
@@ -172,22 +346,14 @@ function getOrderData(companyKey) {
     }
     
     products = sortProducts(products);
-    
-    var displayHeaders = headers;
-    if (upcIdx !== undefined) {
-      displayHeaders = headers.filter(function(_, index) {
-        return index !== upcIdx;
-      });
-    }
-    
-    var sortedData = [displayHeaders];
+
+    // UPC 컬럼을 제거하지 않고 그대로 유지 (프론트엔드 가격 계산을 위해)
+    var sortedData = [headers];
+    var upcList = [];
     for (var i = 0; i < products.length; i++) {
       var rowData = products[i].rowData;
-      if (upcIdx !== undefined) {
-        rowData = rowData.filter(function(_, index) {
-          return index !== upcIdx;
-        });
-      }
+      var rowUpc = upcIdx !== undefined ? rowData[upcIdx] : '';
+      upcList.push(rowUpc || '');
       sortedData.push(rowData);
     }
     
@@ -195,7 +361,8 @@ function getOrderData(companyKey) {
     
     return {
       success: true,
-      data: sortedData
+      data: sortedData,
+      upcList: upcList
     };
     
   } catch (error) {

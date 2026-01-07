@@ -1,187 +1,334 @@
 ﻿<!DOCTYPE html>
 <html>
+
 <head>
   <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>CC HAIR ORDER APP v2</title>
-  
+
   <!-- ZXing 바코드 스캔 라이브러리 (더 강력하고 모바일 최적화) -->
   <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
-  
+
   <style>
+    /* Google Fonts 추가 - iOS 느낌의 깔끔한 폰트 */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-      background: linear-gradient(135deg, #FFF5E1 0%, #FFE5EC 100%);
-      min-height: 100vh;
-      padding: 10px;
-      transition: background 0.3s ease;
-      overflow-x: hidden;
+      user-select: none;
     }
 
-    /* 회사별 배경 테마 - 톤다운 */
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(at 0% 0%, #E0E7FF 0px, transparent 50%),
+        radial-gradient(at 50% 0%, #FDF2F8 0px, transparent 50%),
+        radial-gradient(at 100% 0%, #FFFBEB 0px, transparent 50%),
+        radial-gradient(at 50% 50%, #F0F9FF 0px, transparent 50%),
+        #F2F2F7;
+      min-height: 100vh;
+      padding: 0;
+      transition: background 0.8s ease-in-out;
+      overflow-x: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    /* 회사별 오로라 배경 테마 */
     body.theme-outre {
-      background: linear-gradient(135deg, #FFA07A 0%, #FFB366 100%);
+      background: radial-gradient(at 0% 0%, #FFF7ED 0px, transparent 50%),
+        radial-gradient(at 50% 0%, #FFEDD5 0px, transparent 50%),
+        radial-gradient(at 100% 0%, #FEF3C7 0px, transparent 50%),
+        radial-gradient(at 50% 50%, #FFFBEB 0px, transparent 50%),
+        #FFF2E6;
     }
 
     body.theme-sng {
-      background: linear-gradient(135deg, #6A8FE8 0%, #A799DB 100%);
-    }
-    
-    .container {
-      max-width: 1200px;
-      width: 100%;
-      margin: 0 auto;
-      background: white;
-      border-radius: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      height: calc(100vh - 20px);
-    }
-    
-    /* ===== 헤더 ===== */
-    .header {
-      background: linear-gradient(135deg, #FFF5E1 0%, #FFE5EC 100%);
-      color: #000;
-      padding: 20px;
-      text-align: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-      position: relative;
-      transition: background 0.3s ease;
+      background: radial-gradient(at 0% 0%, #EFF6FF 0px, transparent 50%),
+        radial-gradient(at 50% 0%, #DBEAFE 0px, transparent 50%),
+        radial-gradient(at 100% 0%, #E0E7FF 0px, transparent 50%),
+        radial-gradient(at 50% 50%, #F0F4FF 0px, transparent 50%),
+        #F0F4FF;
     }
 
     .header.theme-outre {
-      background: linear-gradient(135deg, #FFA07A 0%, #FFB366 100%);
+      border-bottom: 2px solid #FF8C00;
     }
 
     .header.theme-sng {
-      background: linear-gradient(135deg, #6A8FE8 0%, #A799DB 100%);
+      border-bottom: 2px solid #007AFF;
     }
-    
-    .header h1 {
-      font-size: 24px;
+
+    .container {
+      max-width: 600px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      min-height: 100vh;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* ===== 헤더 ===== */
+    .header {
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      color: #000;
+      padding: 30px 20px 20px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .estimated-price {
+      font-size: 16px;
       font-weight: 700;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 2px solid;
+      display: none; /* 기본적으로 숨김 */
+    }
+
+    .estimated-price.visible {
+      display: block;
+    }
+
+    .estimated-price.outre {
+      color: #FF8C00;
+      background: rgba(255, 140, 0, 0.1);
+      border-color: #FF8C00;
+    }
+
+    .estimated-price.sng {
+      color: #4169E1;
+      background: rgba(65, 105, 225, 0.1);
+      border-color: #4169E1;
+    }
+
+    .estimated-price-results {
+      font-size: 18px;
+      font-weight: 700;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 2px solid;
+      margin-top: 10px;
+      text-align: center;
+      display: none; /* 기본적으로 숨김 */
+    }
+
+    .estimated-price-results.visible {
+      display: block;
+    }
+
+    .estimated-price-results.outre {
+      color: #FF8C00;
+      background: rgba(255, 140, 0, 0.1);
+      border-color: #FF8C00;
+    }
+
+    .estimated-price-results.sng {
+      color: #4169E1;
+      background: rgba(65, 105, 225, 0.1);
+      border-color: #4169E1;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
       margin: 0;
     }
-    
+
     .order-complete-header-btn {
       position: absolute;
       right: 15px;
       top: 50%;
       transform: translateY(-50%);
-      padding: 8px 16px;
-      background: rgba(255,255,255,0.3);
+      width: 44px;
+      height: 44px;
+      background: #007AFF; /* Default to SNG blue */
       color: white;
-      border: 2px solid white;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
+      border: none;
+      border-radius: 22px;
+      font-size: 20px;
       cursor: pointer;
       transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
-    
+
+    .order-complete-header-btn.theme-outre {
+      background: #FF8C00;
+    }
+
+    .order-complete-header-btn.theme-sng {
+      background: #007AFF;
+    }
+
     .order-complete-header-btn:active {
-      background: rgba(255,255,255,0.5);
+      transform: translateY(-50%) scale(0.92);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     }
-    
+
     .content {
       padding: 20px;
       flex: 1;
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      min-height: 0;
     }
-    
-    /* ===== 바코드 입력 섹션 ===== */
+
+    /* ===== 바코드 입력 섹션 (Option 3 iOS 스타일) ===== */
     #inputSection {
       display: block;
-      overflow: auto;
-    }
-    
-    .input-label {
-      font-size: 18px;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 15px;
-      transition: opacity 0.3s ease;
+      padding: 20px 15px;
     }
 
-    .input-label.hidden {
-      opacity: 0;
-      height: 0;
-      margin: 0;
-      overflow: hidden;
-    }
-
-    .barcode-container {
+    .search-group {
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 4px;
       display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-      align-items: stretch;
-      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 24px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     }
 
-    .barcode-input-row {
-      display: flex;
-      width: 100%;
-      margin-bottom: 10px;
+    .search-group:focus-within {
+      background: rgba(255, 255, 255, 0.8);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
     }
 
-    .barcode-buttons-row {
-      display: flex;
-      gap: 10px;
-      width: 100%;
-    }
-
-    .barcode-buttons-row .camera-btn,
-    .barcode-buttons-row .keyboard-btn,
-    .barcode-buttons-row .search-btn {
-      flex: 1 1 0;
-      min-width: max-content;
-      padding: 0 12px;
-      text-align: center;
-    }
-
-    .barcode-buttons-row .search-btn {
-      width: auto;
-      margin-bottom: 0;
-    }
-    
     #barcodeDisplay {
       flex: 1;
-      height: 60px;
-      font-size: 24px;
-      font-weight: 700;
-      text-align: center;
-      border: 3px solid #FFB6C1;
-      border-radius: 12px;
-      padding: 10px;
-      letter-spacing: 2px;
-      background: #FFF8F0;
-      color: #333;
+      height: 50px;
+      background: transparent;
+      border: none;
+      padding: 0 15px;
+      font-size: 17px;
+      font-weight: 500;
+      color: #000;
       outline: none;
-      min-width: 0;
-      transition: border-color 0.3s;
+      width: 100%;
     }
-    
-    #barcodeDisplay.theme-outre {
-      border-color: #FF8C00;
+
+    #barcodeDisplay::placeholder {
+      color: #8E8E93;
     }
-    
-    #barcodeDisplay.theme-sng {
-      border-color: #4169E1;
+
+    .search-action-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: none;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 20px;
+      color: #007AFF;
+      /* iOS System Blue */
+      transition: background 0.2s;
     }
-    
+
+    .search-action-btn:active {
+      background: rgba(0, 122, 255, 0.1);
+      transform: scale(0.92);
+    }
+
+    .main-buttons-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .ios-btn {
+      height: 110px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.04);
+    }
+
+    .ios-btn.primary {
+      background: rgba(0, 122, 255, 0.9);
+      color: white;
+      border: none;
+    }
+
+    .ios-btn.primary.theme-outre {
+      background: rgba(255, 140, 0, 0.9);
+    }
+
+    .ios-btn.primary.theme-sng {
+      background: #007AFF;
+    }
+
+    .ios-btn.secondary {
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(10px);
+      color: #000;
+    }
+
+    .ios-btn.secondary.active {
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+    }
+
+    .ios-btn:active {
+      transform: scale(0.92) translateY(2px);
+      opacity: 0.8;
+    }
+
+    .ios-btn .btn-icon {
+      font-size: 28px;
+    }
+
     .camera-btn {
       height: 60px;
       padding: 0 20px;
@@ -192,19 +339,19 @@
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       white-space: nowrap;
       transition: background 0.3s;
     }
-    
+
     .camera-btn.theme-outre {
       background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
     }
-    
+
     .camera-btn.theme-sng {
       background: linear-gradient(135deg, #9370DB 0%, #8A2BE2 100%);
     }
-    
+
     .camera-btn:active {
       transform: scale(0.98);
     }
@@ -219,7 +366,7 @@
       font-size: 15px;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       white-space: nowrap;
       transition: background 0.3s, transform 0.2s;
     }
@@ -242,7 +389,7 @@
       font-size: 15px;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.12);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12);
       padding: 0 16px;
       min-width: 72px;
       white-space: nowrap;
@@ -252,7 +399,7 @@
     .search-btn:active {
       transform: scale(0.98);
     }
-    
+
     /* ===== 숫자 키패드 ===== */
     .keypad {
       display: grid;
@@ -260,7 +407,7 @@
       gap: 10px;
       margin-bottom: 15px;
     }
-    
+
     .key-btn {
       height: 60px;
       font-size: 24px;
@@ -270,26 +417,26 @@
       border-radius: 12px;
       color: #FFB6C1;
       cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       user-select: none;
       transition: border-color 0.3s, color 0.3s, background 0.3s;
     }
-    
+
     .key-btn.theme-outre {
       border-color: #FF8C00;
       color: #FF8C00;
     }
-    
+
     .key-btn.theme-sng {
       border-color: #4169E1;
       color: #4169E1;
     }
-    
+
     .key-btn:active {
       transform: scale(0.95);
       background: #FFF8F0;
     }
-    
+
     .key-btn.delete {
       background: linear-gradient(135deg, #DC143C 0%, #B22222 100%);
       color: white;
@@ -319,23 +466,24 @@
     }
 
     .quick-item {
-      padding: 8px 12px;
-      background: #ffffff;
-      border-radius: 10px;
-      font-size: 13px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      border: 1px solid #E5E5EA;
+      border: 1px solid rgba(255, 255, 255, 0.5);
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      gap: 8px;
       transition: all 0.2s;
     }
 
     .quick-item:hover {
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.8);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
     .quick-item .company-pill {
@@ -361,7 +509,7 @@
       font-size: 12px;
       color: #888;
     }
-    
+
     /* ===== 카메라 모달 ===== */
     #cameraModal {
       display: none;
@@ -373,12 +521,12 @@
       background: black;
       z-index: 9999;
     }
-    
+
     #cameraModal.active {
       display: flex;
       flex-direction: column;
     }
-    
+
     .camera-header {
       background: rgba(255, 182, 193, 0.95);
       color: white;
@@ -388,15 +536,15 @@
       font-weight: 600;
       transition: background 0.3s;
     }
-    
+
     .camera-header.theme-outre {
       background: rgba(255, 140, 0, 0.95);
     }
-    
+
     .camera-header.theme-sng {
       background: rgba(65, 105, 225, 0.95);
     }
-    
+
     .camera-viewport {
       flex: 1;
       position: relative;
@@ -431,8 +579,15 @@
     }
 
     @keyframes pulse {
-      0%, 100% { border-color: #00FF00; }
-      50% { border-color: #00CC00; }
+
+      0%,
+      100% {
+        border-color: #00FF00;
+      }
+
+      50% {
+        border-color: #00CC00;
+      }
     }
 
     /* 스캔 안내 텍스트 */
@@ -451,12 +606,12 @@
       pointer-events: none;
       max-width: 90%;
     }
-    
+
     .camera-footer {
       padding: 20px;
-      background: rgba(0,0,0,0.9);
+      background: rgba(0, 0, 0, 0.9);
     }
-    
+
     .close-camera-btn {
       width: 100%;
       padding: 18px;
@@ -468,18 +623,18 @@
       font-weight: 700;
       cursor: pointer;
     }
-    
+
     .close-camera-btn:active {
       transform: scale(0.98);
     }
-    
+
     /* ===== 로딩 ===== */
     #loading {
       display: none;
       text-align: center;
       padding: 40px;
     }
-    
+
     .spinner {
       border: 4px solid #f3f3f3;
       border-top: 4px solid #FFB6C1;
@@ -490,40 +645,47 @@
       margin: 20px auto;
       transition: border-top-color 0.3s;
     }
-    
+
     .spinner.theme-outre {
       border-top-color: #FF8C00;
     }
-    
+
     .spinner.theme-sng {
       border-top-color: #4169E1;
     }
-    
+
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
     }
-    
+
     .loading-text {
       font-size: 18px;
       color: #FFB6C1;
       font-weight: 600;
       transition: color 0.3s;
     }
-    
+
     .loading-text.theme-outre {
       color: #FF8C00;
     }
-    
+
     .loading-text.theme-sng {
       color: #4169E1;
     }
-    
+
     /* ===== 결과 섹션 ===== */
     #resultsSection {
       display: none;
       flex-direction: column;
       height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
 
     /* ===== 키워드 검색 결과 섹션 ===== */
@@ -531,6 +693,8 @@
       display: none;
       flex-direction: column;
       height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .keyword-header {
@@ -607,6 +771,50 @@
       border-color: #2D9CDB;
     }
 
+    .keyword-breakdown-inline {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .keyword-breakdown-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .keyword-breakdown-buttons-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .keyword-btn-inline {
+      padding: 6px 12px;
+      background: white;
+      border: 2px solid #2D9CDB;
+      color: #2D9CDB;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .keyword-btn-inline.selected {
+      background: #2D9CDB;
+      color: white;
+    }
+
+    .keyword-btn-inline:active {
+      transform: scale(0.95);
+    }
+
     .keyword-list {
       display: flex;
       flex-direction: column;
@@ -626,7 +834,7 @@
       justify-content: space-between;
       gap: 10px;
       cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
 
     .keyword-desc {
@@ -671,45 +879,96 @@
       color: magenta;
       font-weight: 700;
     }
-    
+
+    /* 키워드 하이라이트 */
+    .keyword-highlight {
+      color: #FF0000;
+      font-weight: 700;
+    }
+
+    /* 회사 구분자 */
+    .keyword-company-divider {
+      font-size: 13px;
+      font-weight: 700;
+      padding: 10px 14px;
+      margin: 8px 0 4px 0;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .keyword-company-divider.outre {
+      background: rgba(255, 140, 0, 0.15);
+      color: #FF8C00;
+      border: 1px solid rgba(255, 140, 0, 0.3);
+    }
+
+    .keyword-company-divider.sng {
+      background: rgba(65, 105, 225, 0.15);
+      color: #4169E1;
+      border: 1px solid rgba(65, 105, 225, 0.3);
+    }
+
     .results-summary {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      gap: 10px;
+      gap: 12px;
       margin-bottom: 12px;
     }
-    
+
     .results-item-name {
       font-size: 18px;
       font-weight: 700;
       color: #333;
       line-height: 1.2;
       word-break: break-word;
+      flex: 1;
+      min-width: 0;
     }
-    
+
+    .results-side {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .results-side-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .results-side-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      width: 100%;
+    }
+
     .results-company-badge {
       flex-shrink: 0;
     }
-    
+
     /* 상단 액션 버튼 (4개 나란히) - 재구성 */
     .action-buttons-top {
       display: grid;
-      grid-template-columns: 2fr 1.5fr 1.5fr 1fr;
-      gap: 8px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
       margin-bottom: 15px;
     }
 
     .action-btn-top {
-      height: 55px;
+      height: 70px;
       font-size: 16px;
       font-weight: 700;
       border: none;
-      border-radius: 12px;
+      border-radius: 16px;
       cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
       user-select: none;
-      transition: all 0.2s;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -721,8 +980,7 @@
 
     /* Primary: 저장 후 카메라 (가장 큰/강조) */
     .action-btn-top.save-camera {
-      background: linear-gradient(135deg, #7DB6E8 0%, #5FA4DB 100%);
-      font-size: 18px;
+      background: linear-gradient(135deg, #007AFF 0%, #0056B3 100%);
     }
 
     .action-btn-top.save-camera .btn-icon {
@@ -737,8 +995,10 @@
 
     /* Secondary: 저장 후 검색창 */
     .action-btn-top.save-back {
-      background: linear-gradient(135deg, #B3B3B8 0%, #909096 100%);
-      font-size: 16px;
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(10px);
+      color: #333;
+      border: 1px solid rgba(255, 255, 255, 0.6);
     }
 
     .action-btn-top.save-back .btn-icon {
@@ -753,8 +1013,9 @@
 
     /* Tertiary: 검색창으로 돌아가기 (저장 없이) */
     .action-btn-top.cancel {
-      background: linear-gradient(135deg, #C4C4C4 0%, #A6A6A6 100%);
-      font-size: 16px;
+      background: rgba(142, 142, 147, 0.2);
+      backdrop-filter: blur(10px);
+      color: #333;
     }
 
     .action-btn-top.cancel .btn-icon {
@@ -769,23 +1030,58 @@
 
     /* Cart: 장바구니 */
     .action-btn-top.cart {
-      background: linear-gradient(135deg, #FFB07A 0%, #FF9A66 100%);
-      font-size: 20px;
+      background: #FF9500;
+    }
+
+    /* 새로운 큰 버튼 스타일들 */
+    .action-btn-top .btn-icon {
+      font-size: 28px;
+    }
+
+    .action-btn-top .btn-label {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .camera-btn-large {
+      background: linear-gradient(135deg, #FF6B9D 0%, #FF4D88 100%);
+    }
+
+    .keyboard-btn-large {
+      background: linear-gradient(135deg, #6C757D 0%, #495057 100%);
+    }
+
+    .keyword-btn-large {
+      background: linear-gradient(135deg, #2D9CDB 0%, #1C7ED6 100%);
+    }
+
+    .cart-btn-large {
+      background: linear-gradient(135deg, #FF9500 0%, #FF8000 100%);
     }
 
     .action-btn-top:active {
-      transform: scale(0.98);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+      transform: scale(0.95);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    
+
+    .favorite-btn-results {
+      border: none;
+      background: transparent;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+      flex-shrink: 0;
+    }
+
     .results-header {
       display: none;
     }
-    
+
     .order-complete-btn {
       display: none;
     }
-    
+
     /* ===== 수량 조절 버튼 (2줄 레이아웃) ===== */
     .quantity-controls {
       display: grid;
@@ -803,7 +1099,7 @@
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       user-select: none;
       transition: all 0.2s;
     }
@@ -818,7 +1114,7 @@
 
     .qty-btn:active {
       transform: scale(0.95);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
     }
 
     .qty-btn.clear {
@@ -832,31 +1128,49 @@
     .qty-spacer {
       /* 빈 공간 (나중 확장용) */
     }
-    
+
+    .results-fixed {
+      flex: 0 0 auto;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+      padding-bottom: 8px;
+    }
+
     /* ===== 제품 테이블 ===== */
     .table-container {
       overflow-x: hidden;
       margin-bottom: 20px;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       max-height: none;
       overflow-y: auto;
       flex: 1;
+      min-height: 0;
     }
-    
+
     .products-table {
       width: 100%;
       border-collapse: collapse;
       background: white;
       table-layout: fixed;
     }
-    
+
     .products-table thead {
       position: sticky;
       top: 0;
       z-index: 10;
     }
-    
+
+    .products-table th {
+      position: sticky;
+      top: 0;
+      z-index: 11;
+    }
+
     .products-table th {
       background: linear-gradient(135deg, #F6BCCB 0%, #F2A7BC 100%);
       color: white;
@@ -874,7 +1188,7 @@
     .products-table.theme-sng th {
       background: linear-gradient(135deg, #7AA1EA 0%, #6A92DD 100%);
     }
-    
+
     .products-table td {
       padding: 10px;
       border-bottom: 1px solid #e0e0e0;
@@ -882,23 +1196,23 @@
       vertical-align: middle;
       line-height: 1.2;
     }
-    
+
     .products-table th.qty-col,
     .products-table td.qty-col {
       width: 70px;
     }
-    
+
     .products-table th.color-col,
     .products-table td.color-col {
       width: 90px;
     }
-    
+
     .products-table th.shipped-col,
     .products-table td.shipped-col {
       width: 70px;
       text-align: right;
     }
-    
+
     .products-table th.price-col,
     .products-table td.price-col {
       width: 100px;
@@ -913,22 +1227,22 @@
       word-break: break-word;
       line-height: 1.4;
     }
-    
+
     .color-shipped {
       color: magenta;
       font-weight: 700;
     }
-    
+
     .color-backorder {
       color: green;
       font-weight: 700;
     }
-    
+
     .products-table tbody tr {
       cursor: pointer;
       transition: background-color 0.2s;
     }
-    
+
     .products-table tbody tr:hover {
       background-color: #FFF8F0;
     }
@@ -953,15 +1267,15 @@
       border-left: 4px solid #FFB6C1;
       transition: border-left-color 0.3s;
     }
-    
+
     .products-table.theme-outre tbody tr.selected {
       border-left-color: #FF8C00;
     }
-    
+
     .products-table.theme-sng tbody tr.selected {
       border-left-color: #4169E1;
     }
-    
+
     .quantity-input {
       width: 80px;
       height: 45px;
@@ -976,23 +1290,23 @@
       outline: none !important;
       transition: border-color 0.3s, color 0.3s;
     }
-    
+
     .quantity-input.theme-outre {
       border-color: #FF8C00;
       color: #FF8C00;
     }
-    
+
     .quantity-input.theme-sng {
       border-color: #4169E1;
       color: #4169E1;
     }
-    
+
     .quantity-input::-webkit-outer-spin-button,
     .quantity-input::-webkit-inner-spin-button {
       -webkit-appearance: none;
       margin: 0;
     }
-    
+
     /* 회사 뱃지 - 미니멀 */
     .company-badge {
       display: inline-block;
@@ -1013,7 +1327,7 @@
       color: #4169E1;
       border: 1px solid rgba(65, 105, 225, 0.3);
     }
-    
+
     /* 주문 페이지 이동 버튼 */
     .goto-order-btn {
       padding: 8px 16px;
@@ -1024,20 +1338,20 @@
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       transition: transform 0.2s;
     }
-    
+
     .goto-order-btn:active {
       transform: scale(0.95);
     }
-    
+
     /* ===== 액션 버튼 ===== */
     .action-buttons {
       display: flex;
       gap: 10px;
     }
-    
+
     .action-btn {
       flex: 1;
       padding: 18px;
@@ -1046,41 +1360,41 @@
       border: none;
       border-radius: 12px;
       cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       user-select: none;
       transition: background 0.3s;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    
+
     .action-btn.add {
       background: linear-gradient(135deg, #FFB6C1 0%, #FF69B4 100%);
       color: white;
     }
-    
+
     .action-btn.add.theme-outre {
       background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
     }
-    
+
     .action-btn.add.theme-sng {
       background: linear-gradient(135deg, #9370DB 0%, #8A2BE2 100%);
     }
-    
+
     .action-btn.save-camera {
       background: linear-gradient(135deg, #4169E1 0%, #6495ED 100%);
       color: white;
     }
-    
+
     .action-btn.save-back {
       background: linear-gradient(135deg, #808080 0%, #696969 100%);
       color: white;
     }
-    
+
     .action-btn:active {
       transform: scale(0.98);
     }
-    
+
     /* ===== 백오더 프롬프트 모달 ===== */
     #backorderModal {
       display: none;
@@ -1089,7 +1403,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0, 0, 0, 0.7);
       z-index: 10001;
       overflow: auto;
     }
@@ -1107,7 +1421,7 @@
       max-width: 400px;
       width: 100%;
       overflow: hidden;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
       animation: modalSlideIn 0.3s ease-out;
     }
 
@@ -1116,6 +1430,7 @@
         opacity: 0;
         transform: translateY(-20px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -1206,7 +1521,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0, 0, 0, 0.7);
       z-index: 10000;
       overflow: auto;
     }
@@ -1217,7 +1532,7 @@
       justify-content: center;
       padding: 20px;
     }
-    
+
     .order-modal-content {
       background: white;
       border-radius: 16px;
@@ -1226,9 +1541,9 @@
       max-height: 90vh;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     }
-    
+
     .order-modal-header {
       background: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%);
       color: white;
@@ -1238,14 +1553,15 @@
       font-weight: 700;
       text-align: center;
     }
-    
+
     /* 회사 탭 */
     .company-tabs {
       display: flex;
       background: #f5f5f5;
       border-bottom: 2px solid #ddd;
+      align-items: center;
     }
-    
+
     .company-tab {
       flex: 1;
       padding: 15px;
@@ -1257,43 +1573,62 @@
       color: #999;
       border: none;
       transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
-    
+
     .company-tab:hover {
       background: #e8e8e8;
     }
-    
+
     .company-tab.active {
       background: white;
       color: #333;
       border-bottom: 3px solid #FF8C00;
     }
-    
+
     .company-tab.active.tab-outre {
       border-bottom-color: #FF8C00;
     }
-    
+
     .company-tab.active.tab-sng {
       border-bottom-color: #4169E1;
     }
-    
+
+    .company-tab .tab-amount {
+      margin-left: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .company-tab.tab-sng .tab-amount {
+      color: #4169E1;
+    }
+
+    .company-tab.tab-outre .tab-amount {
+      color: #FF8C00;
+    }
+
     .order-modal-body {
       flex: 1;
       overflow: auto;
       padding: 20px;
     }
-    
+
     .order-table-container {
-      overflow-x: auto;
+      overflow-x: hidden;
       margin-bottom: 20px;
     }
-    
+
     .order-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 14px;
     }
-    
+
     .order-table th {
       background: #f5f5f5;
       padding: 12px;
@@ -1301,19 +1636,81 @@
       font-weight: 600;
       border-bottom: 2px solid #ddd;
     }
-    
+
     .order-table td {
       padding: 12px;
       border-bottom: 1px solid #eee;
     }
-    
+
+    .order-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .order-row {
+      position: relative;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid #eee;
+    }
+
+    .order-row-content {
+      display: grid;
+      grid-template-columns: 1.6fr 0.8fr 0.6fr;
+      gap: 8px;
+      padding: 12px;
+      align-items: center;
+      transition: transform 0.2s ease-out;
+      background: #fff;
+      position: relative;
+      z-index: 1;
+    }
+
+    .order-row-header .order-row-content {
+      background: #f5f5f5;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .order-row-cell {
+      font-size: 14px;
+      color: #333;
+      word-break: break-word;
+    }
+
+    .order-row.swiped .order-row-content {
+      transform: translateX(-80px);
+    }
+
+    .order-row-delete {
+      position: absolute;
+      right: -80px;
+      top: 0;
+      width: 80px;
+      height: 100%;
+      border: none;
+      background: #DC143C;
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: right 0.2s ease-out;
+      z-index: 2;
+    }
+
+    .order-row.swiped .order-row-delete {
+      right: 0;
+    }
+
     .empty-message {
       text-align: center;
       padding: 40px;
       color: #999;
       font-size: 16px;
     }
-    
+
     .order-modal-footer {
       padding: 20px;
       border-top: 1px solid #eee;
@@ -1321,7 +1718,7 @@
       gap: 10px;
       flex-wrap: wrap;
     }
-    
+
     .modal-btn {
       flex: 1;
       min-width: 120px;
@@ -1331,36 +1728,180 @@
       border: none;
       border-radius: 10px;
       cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       transition: all 0.2s;
     }
-    
+
     .modal-btn:active {
       transform: scale(0.98);
     }
-    
+
     .modal-btn.copy {
       background: linear-gradient(135deg, #4169E1 0%, #6495ED 100%);
       color: white;
     }
-    
+
     .modal-btn.clear-list {
       background: linear-gradient(135deg, #DC143C 0%, #B22222 100%);
       color: white;
     }
-    
+
     .modal-btn.close {
       background: linear-gradient(135deg, #808080 0%, #696969 100%);
       color: white;
     }
-    
+
+    /* ===== 키워드 분석 모달 ===== */
+    #keywordBreakdownModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10002;
+      overflow: auto;
+    }
+
+    #keywordBreakdownModal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .keyword-breakdown-content {
+      background: white;
+      border-radius: 16px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .keyword-breakdown-header {
+      background: linear-gradient(135deg, #2D9CDB 0%, #1C7ED6 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 16px 16px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .keyword-breakdown-back {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .keyword-breakdown-back:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .keyword-breakdown-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .keyword-breakdown-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .keyword-breakdown-product {
+      font-size: 16px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      border: 2px solid #e9ecef;
+    }
+
+    .keyword-breakdown-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .keyword-btn-item {
+      padding: 10px 16px;
+      background: white;
+      border: 2px solid #2D9CDB;
+      color: #2D9CDB;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .keyword-btn-item:hover {
+      background: #e3f2fd;
+    }
+
+    .keyword-btn-item.selected {
+      background: #2D9CDB;
+      color: white;
+    }
+
+    .keyword-breakdown-selected {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      min-height: 60px;
+    }
+
+    .selected-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .selected-keywords {
+      font-size: 14px;
+      color: #333;
+      font-weight: 600;
+    }
+
+    .keyword-breakdown-search {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #2D9CDB 0%, #1C7ED6 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .keyword-breakdown-search:active {
+      transform: scale(0.98);
+    }
+
     /* ===== 알림 ===== */
     #alertMessage {
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.9);
+      background: rgba(0, 0, 0, 0.9);
       color: white;
       padding: 20px 40px;
       border-radius: 12px;
@@ -1370,30 +1911,75 @@
       z-index: 20000;
       display: none;
       max-width: 90%;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     }
-    
+
     #alertMessage.show {
       display: block;
       animation: fadeInOut 3s;
     }
-    
-    @keyframes fadeInOut {
-      0%, 100% { opacity: 0; }
-      10%, 90% { opacity: 1; }
+
+    #quantityFlash {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.6);
+      opacity: 0;
+      pointer-events: none;
+      font-size: 72px;
+      font-weight: 800;
+      color: #333;
+      text-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      z-index: 20001;
     }
-    
+
+    #quantityFlash.show {
+      animation: quantityFlash 0.8s ease-out;
+    }
+
+    @keyframes fadeInOut {
+
+      0%,
+      100% {
+        opacity: 0;
+      }
+
+      10%,
+      90% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes quantityFlash {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.6);
+      }
+      20% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      80% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.1);
+      }
+    }
+
     /* ===== 반응형 ===== */
     @media (max-width: 768px) {
       .header h1 {
         font-size: 18px;
       }
-      
+
       .order-complete-header-btn {
         font-size: 12px;
         padding: 6px 12px;
       }
-      
+
       .quantity-controls {
         grid-template-columns: repeat(4, 1fr);
       }
@@ -1402,20 +1988,20 @@
         height: 38px;
         font-size: 14px;
       }
-      
+
       .products-table th,
       .products-table td {
         padding: 10px;
         font-size: 14px;
       }
-      
+
       .quantity-input {
         width: 60px;
         height: 40px;
         font-size: 16px;
       }
     }
-    
+
     @media (max-width: 480px) {
       .barcode-container {
         gap: 6px;
@@ -1427,15 +2013,15 @@
         font-size: 13px;
         padding: 0 12px;
       }
-      
+
       .action-buttons {
         flex-direction: column;
       }
-      
+
       .order-modal-footer {
         flex-direction: column;
       }
-      
+
       .modal-btn {
         width: 100%;
       }
@@ -1465,7 +2051,7 @@
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       border-radius: 12px;
       border: 2px solid #dee2e6;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     #color-stats-container.visible {
@@ -1500,13 +2086,13 @@
       background: white;
       border-radius: 8px;
       border: 1px solid #dee2e6;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
       transition: transform 0.2s, box-shadow 0.2s;
     }
 
     .stat-item:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
     .stat-label {
@@ -1534,7 +2120,7 @@
       vertical-align: middle;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
 
     .badge-new {
@@ -1603,27 +2189,36 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="header">
       <h1>CC HAIR ORDER APP v2</h1>
-      <button class="order-complete-header-btn" onclick="app.showOrderComplete()">
-        ORDER COMPLETE
-      </button>
+      <div class="header-right">
+        <div id="estimatedPrice" class="estimated-price">$0.00</div>
+        <button class="order-complete-header-btn" onclick="app.showOrderComplete()">🛒</button>
+      </div>
     </div>
-    
+
     <div class="content">
       <!-- 바코드 입력 섹션 -->
       <div id="inputSection">
-        <div class="barcode-container">
-          <div class="barcode-input-row">
-            <input type="text" id="barcodeDisplay" maxlength="50" inputmode="none" readonly placeholder="Enter barcode or name">
-          </div>
-          <div class="barcode-buttons-row">
-            <button class="camera-btn" onclick="app.openCamera()">Camera</button>
-            <button class="keyboard-btn" onclick="app.toggleKeyboardMode()">Keyboard</button>
-            <button class="search-btn" onclick="app.searchFromKeyboard()">Search</button>
-          </div>
+        <div class="search-group">
+          <input type="text" id="barcodeDisplay" maxlength="50" inputmode="none" readonly
+            placeholder="Enter barcode or item name">
+          <button class="search-action-btn" onclick="app.clearBarcode()" id="clearBtn" style="display: none;">✕</button>
+          <button class="search-action-btn" onclick="app.searchFromKeyboard()">🔍</button>
+        </div>
+
+        <div class="main-buttons-grid">
+          <button class="ios-btn primary" onclick="app.openCamera()">
+            <span class="btn-icon">📷</span>
+            <span>Scan Barcode</span>
+          </button>
+          <button class="ios-btn secondary keyboard-btn" onclick="app.toggleKeyboardMode()">
+            <span class="btn-icon">⌨️</span>
+            <span>Keyboard</span>
+          </button>
         </div>
 
         <div class="quick-section">
@@ -1638,38 +2233,52 @@
           <div id="historyEmpty" class="quick-empty">No recent items</div>
         </div>
       </div>
-      
+
       <!-- 로딩 -->
       <div id="loading">
         <div class="spinner"></div>
         <div class="loading-text">Searching...</div>
       </div>
-      
+
       <!-- 결과 섹션 -->
       <div id="resultsSection">
-        <div class="results-summary" id="keywordBackRow" style="display: none;">
-          <button class="keyword-back-btn" onclick="app.backToKeywordResults()">Back to results</button>
-        </div>
-        <div class="action-buttons-top">
-          <button class="action-btn-top save-camera" onclick="app.saveAndOpenCamera()">
-            <span class="btn-icon">SAVE</span>
-            <span class="btn-label">SCAN</span>
-          </button>
-          <button class="action-btn-top save-back" onclick="app.saveAndGoBack()">
-            <span class="btn-icon">SAVE</span>
-            <span class="btn-label">SEARCH</span>
-          </button>
-          <button class="action-btn-top cancel" onclick="app.cancelToSearch()">
-            <span class="btn-icon">BACK</span>
-            <span class="btn-label">SEARCH</span>
-          </button>
-          <button class="action-btn-top cart" onclick="app.showOrderComplete()">CART</button>
-        </div>
-        
-        <div class="results-summary">
-          <div id="resultItemName" class="results-item-name"></div>
-          <div id="resultCompanyBadge" class="company-badge results-company-badge"></div>
-        </div>
+        <div class="results-fixed">
+          <div class="results-summary" id="keywordBackRow" style="display: none;">
+            <button class="keyword-back-btn" onclick="app.backToKeywordResults()">Back to results</button>
+          </div>
+
+          <div class="action-buttons-top">
+            <button class="action-btn-top camera-btn-large" onclick="app.openCamera()">
+              <span class="btn-icon">📷</span>
+              <span class="btn-label">CAMERA</span>
+            </button>
+            <button class="action-btn-top keyboard-btn-large" onclick="app.cancelToSearch()">
+              <span class="btn-icon">⌨️</span>
+              <span class="btn-label">KEYBOARD</span>
+            </button>
+            <button class="action-btn-top keyword-btn-large" onclick="app.showKeywordBreakdown()">
+              <span class="btn-icon">🔍</span>
+              <span class="btn-label">KEYWORD</span>
+            </button>
+            <button class="action-btn-top cart-btn-large" onclick="app.showOrderComplete()">
+              <span class="btn-icon">🛒</span>
+              <span class="btn-label">CART</span>
+            </button>
+          </div>
+
+          <div class="results-summary">
+            <div id="resultItemName" class="results-item-name"></div>
+            <div class="results-side">
+              <div class="results-side-top">
+                <button id="favoriteBtnResults" class="favorite-btn-results" onclick="app.toggleCurrentFavorite()">☆</button>
+                <div id="resultCompanyBadge" class="company-badge results-company-badge"></div>
+              </div>
+              <div class="results-side-bottom">
+                <div id="estimatedPriceResults" class="estimated-price-results">$0.00</div>
+              </div>
+            </div>
+          </div>
+
 
         <!-- 컬러 통계 영역 (고정 위치) - 주석 처리 (나중 사용) -->
         <!--
@@ -1679,20 +2288,21 @@
         </div>
         -->
 
-        <div class="quantity-controls">
-          <!-- 1줄: ALL, +1, +3, +6 -->
-          <button class="qty-btn all-toggle" onclick="app.toggleAllMode()">ALL</button>
-          <button class="qty-btn" onclick="app.adjustQuantity(1)">+1</button>
-          <button class="qty-btn" onclick="app.adjustQuantity(3)">+3</button>
-          <button class="qty-btn" onclick="app.adjustQuantity(6)">+6</button>
+          <div class="quantity-controls">
+            <!-- 1줄: ALL, +1, +3, +6 -->
+            <button class="qty-btn all-toggle" onclick="app.toggleAllMode()">ALL</button>
+            <button class="qty-btn" onclick="app.adjustQuantity(1)">+1</button>
+            <button class="qty-btn" onclick="app.adjustQuantity(3)">+3</button>
+            <button class="qty-btn" onclick="app.adjustQuantity(6)">+6</button>
 
-          <!-- 2줄: +10, +12, CLEAR, 여백 -->
-          <button class="qty-btn" onclick="app.adjustQuantity(10)">+10</button>
-          <button class="qty-btn" onclick="app.adjustQuantity(12)">+12</button>
-          <button class="qty-btn clear" onclick="app.clearQuantity()">CLEAR</button>
-          <div class="qty-spacer"></div>
+            <!-- 2줄: +10, +12, CLEAR, 여백 -->
+            <button class="qty-btn" onclick="app.adjustQuantity(10)">+10</button>
+            <button class="qty-btn" onclick="app.adjustQuantity(12)">+12</button>
+            <button class="qty-btn clear" onclick="app.clearQuantity()">CLEAR</button>
+            <div class="qty-spacer"></div>
+          </div>
         </div>
-        
+
         <div class="table-container">
           <table class="products-table">
             <thead>
@@ -1723,15 +2333,21 @@
         <div class="keyword-filters">
           <button class="keyword-filter active" data-filter="ALL" onclick="app.setKeywordFilter('ALL')">All</button>
           <button class="keyword-filter" data-filter="ACTIVE" onclick="app.setKeywordFilter('ACTIVE')">Active</button>
-          <button class="keyword-filter" data-filter="DISCONTINUE_UNKNOWN" onclick="app.setKeywordFilter('DISCONTINUE_UNKNOWN')">Discontinue soon</button>
-          <button class="keyword-filter" data-filter="DISCONTINUED" onclick="app.setKeywordFilter('DISCONTINUED')">Discontinued</button>
+          <button class="keyword-filter" data-filter="DISCONTINUE_UNKNOWN"
+            onclick="app.setKeywordFilter('DISCONTINUE_UNKNOWN')">Discontinue soon</button>
+          <button class="keyword-filter" data-filter="DISCONTINUED"
+            onclick="app.setKeywordFilter('DISCONTINUED')">Discontinued</button>
+        </div>
+        <div class="keyword-breakdown-inline" id="keywordBreakdownInline" style="display: none;">
+          <div class="keyword-breakdown-label">Keywords:</div>
+          <div class="keyword-breakdown-buttons-inline" id="keywordBreakdownButtonsInline"></div>
         </div>
         <div id="keywordResultsList" class="keyword-list"></div>
         <div id="keywordEmpty" class="keyword-empty" style="display: none;"></div>
       </div>
     </div>
   </div>
-  
+
   <!-- 카메라 모달 -->
   <div id="cameraModal">
     <div class="camera-header">Align the barcode in the center</div>
@@ -1745,7 +2361,7 @@
       <button class="close-camera-btn" onclick="app.closeCamera()">Close</button>
     </div>
   </div>
-  
+
   <!-- 백오더 프롬프트 모달 -->
   <div id="backorderModal">
     <div class="backorder-modal-content">
@@ -1764,21 +2380,42 @@
     </div>
   </div>
 
+  <!-- 키워드 분석 모달 -->
+  <div id="keywordBreakdownModal">
+    <div class="keyword-breakdown-content">
+      <div class="keyword-breakdown-header">
+        <button class="keyword-breakdown-back" onclick="app.closeKeywordBreakdown()">← Back</button>
+        <div class="keyword-breakdown-title">Select keywords to search</div>
+      </div>
+      <div class="keyword-breakdown-body">
+        <div class="keyword-breakdown-product" id="keywordBreakdownProduct"></div>
+        <div class="keyword-breakdown-buttons" id="keywordBreakdownButtons"></div>
+        <div class="keyword-breakdown-selected" id="keywordBreakdownSelected">
+          <div class="selected-label">Selected keywords:</div>
+          <div class="selected-keywords" id="selectedKeywords"></div>
+        </div>
+        <button class="keyword-breakdown-search" onclick="app.searchSelectedKeywords()">🔍 Search</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ORDER COMPLETE 모달 -->
   <div id="orderModal">
     <div class="order-modal-content">
       <div class="order-modal-header">Order summary</div>
-      
+
       <!-- 회사 탭 -->
       <div class="company-tabs">
         <button class="company-tab tab-sng active" onclick="app.switchCompany('SNG')">
-          SNG
+          <span class="tab-label">SNG</span>
+          <span class="tab-amount" id="tabAmountSng">$0.00</span>
         </button>
         <button class="company-tab tab-outre" onclick="app.switchCompany('OUTRE')">
-          OUTRE
+          <span class="tab-label">OUTRE</span>
+          <span class="tab-amount" id="tabAmountOutre">$0.00</span>
         </button>
       </div>
-      
+
       <div class="order-modal-body" id="orderModalBody">
         <!-- 데이터가 여기에 표시됩니다 -->
       </div>
@@ -1789,10 +2426,13 @@
       </div>
     </div>
   </div>
-  
+
+  <!-- 수량 입력 플래시 -->
+  <div id="quantityFlash"></div>
+
   <!-- 알림 메시지 -->
   <div id="alertMessage"></div>
-  
+
   <script>
     // ============================================================================
     // CC3 HAIR ORDER APP - Frontend v4.2
@@ -1852,6 +2492,23 @@
       return div.innerHTML;
     }
 
+    function escapeRegExp(text) {
+      return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function normalizeOrderDescription(text) {
+      return (text || '').toString().trim().toUpperCase();
+    }
+
+    function normalizeOrderKey(value) {
+      if (value === null || value === undefined) return '';
+      return value.toString().trim().replace(/^0+/, '');
+    }
+
+    function normalizeColorValue(color) {
+      return (color || '').toString().toUpperCase().replace(/[\s\-_]+/g, '').trim();
+    }
+
     var app = {
       // 상태
       barcode: '',
@@ -1863,6 +2520,8 @@
       orderData: {},  // { OUTRE: [], SNG: [] }
       detectionBuffer: {},
       currentCompany: null,  // 현재 스캔된 회사 (OUTRE or SNG)
+      currentPrimaryBarcode: '',
+      lastSearchSource: '',
       viewingCompany: 'SNG',  // 장바구니에서 보고 있는 회사
       keyboardMode: false,
       keywordQuery: '',
@@ -1875,7 +2534,16 @@
       history: [],
       favorites: [],
       backorderPrompted: false,
-      
+      availableKeywords: [],
+      selectedKeywordsList: [],
+      orderLoadRequestId: { SNG: 0, OUTRE: 0 },
+      orderDescriptionMap: { OUTRE: {}, SNG: {} },
+      pendingSelectColor: '',
+      pendingSelectBarcode: '',
+      pendingCartQuantity: '', // 장바구니에서 가져온 수량 (단일 - 이전 버전 호환용)
+      pendingCartQuantityMap: {}, // 장바구니에서 가져온 모든 컬러별 수량 맵
+      cartTotals: { OUTRE: null, SNG: null },
+
       // DOM 요소
       barcodeDisplay: null,
       inputSection: null,
@@ -1902,11 +2570,16 @@
       orderModal: null,
       orderModalBody: null,
       alertMessage: null,
-      
+      quantityFlashEl: null,
+      clearBtn: null,
+      keywordBreakdownModal: null,
+      selectedKeywordsList: [],
+      allDatabaseResults: { OUTRE: [], SNG: [] }, // 전체 DB 검색 결과 저장
+
       // 초기화
-      init: function() {
+      init: function () {
         console.log('=== CC3 HAIR ORDER APP 시작 ===');
-        
+
         // DOM 요소 캐싱
         this.barcodeDisplay = document.getElementById('barcodeDisplay');
         this.inputSection = document.getElementById('inputSection');
@@ -1933,13 +2606,16 @@
         this.orderModal = document.getElementById('orderModal');
         this.orderModalBody = document.getElementById('orderModalBody');
         this.alertMessage = document.getElementById('alertMessage');
+        this.quantityFlashEl = document.getElementById('quantityFlash');
+        this.clearBtn = document.getElementById('clearBtn');
+        this.keywordBreakdownModal = document.getElementById('keywordBreakdownModal');
 
         // 바코드 입력 이벤트
         this.barcodeDisplay.addEventListener('input', this.onBarcodeInput.bind(this));
         this.barcodeDisplay.addEventListener('paste', this.onBarcodePaste.bind(this));
         this.barcodeDisplay.addEventListener('keydown', this.onBarcodeKeyDown.bind(this));
-        
-        // 바코드 스캐너 이벤트
+
+        // 바코드 스캐너 설정
         this.setupBarcodeScanner();
 
         // 기본 스캔 모드 (키보드 비활성)
@@ -1952,17 +2628,21 @@
         this.renderFavorites();
         this.restoreHistoryFromServer();
         this.restoreFavoritesFromServer();
-        
+
+        // 주문 데이터 미리 로드 (하이라이트 및 가격 표시용)
+        this.loadOrderData('SNG');
+        this.loadOrderData('OUTRE');
+
         console.log('초기화 완료');
       },
-      
+
       // 바코드 스캐너 설정 (하드웨어 스캐너)
-      setupBarcodeScanner: function() {
+      setupBarcodeScanner: function () {
         var self = this;
         var scanBuffer = '';
         var scanTimeout = null;
 
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
           if (self.cameraActive || self.orderModal.classList.contains('active') || self.keyboardMode) {
             return;
           }
@@ -1971,7 +2651,7 @@
             scanBuffer += e.key;
 
             clearTimeout(scanTimeout);
-            scanTimeout = setTimeout(function() {
+            scanTimeout = setTimeout(function () {
               if (scanBuffer.length === 12) {
                 console.log('스캐너 입력:', scanBuffer);
                 self.handleSearchInput(scanBuffer, 'scanner');
@@ -1987,12 +2667,17 @@
           }
         });
       },
-      
+
       // 바코드 입력
-      onBarcodeInput: function(e) {
+      onBarcodeInput: function (e) {
         this.barcode = e.target.value.trim();
 
-        // 입력값 있으면 안내 문구 숨김
+        // 지우기 버튼 표시 여부
+        if (this.clearBtn) {
+          this.clearBtn.style.display = this.barcode ? 'flex' : 'none';
+        }
+
+        // 입력값 있으면 안내 문구 숨김 (하위 호환성 유지)
         if (this.inputPlaceholder) {
           if (this.barcode) {
             this.inputPlaceholder.classList.add('hidden');
@@ -2001,9 +2686,9 @@
           }
         }
       },
-      
+
       // 바코드 키다운
-      onBarcodeKeyDown: function(e) {
+      onBarcodeKeyDown: function (e) {
         if (e.key === 'Enter') {
           e.preventDefault();
           if (this.keyboardMode) {
@@ -2013,37 +2698,41 @@
           }
         }
       },
-      
+
       // 바코드 붙여넣기
-      onBarcodePaste: function(e) {
+      onBarcodePaste: function (e) {
         e.preventDefault();
         var pastedText = (e.clipboardData || window.clipboardData).getData('text');
         var cleaned = pastedText.trim().substring(0, 50);
 
         var self = this;
-        setTimeout(function() {
+        setTimeout(function () {
           self.handleSearchInput(cleaned, 'paste');
         }, 100);
       },
-      
+
       // 숫자 추가
-      addDigit: function(digit) {
+      addDigit: function (digit) {
         if (this.barcode.length < 50) {
           this.barcode += digit;
           this.barcodeDisplay.value = this.barcode;
         }
       },
-      
+
       // 한 자리 삭제
-      deleteDigit: function() {
+      deleteDigit: function () {
         this.barcode = this.barcode.slice(0, -1);
         this.barcodeDisplay.value = this.barcode;
       },
-      
+
       // 바코드 초기화
-      clearBarcode: function() {
+      clearBarcode: function () {
         this.barcode = '';
         this.barcodeDisplay.value = '';
+
+        if (this.clearBtn) {
+          this.clearBtn.style.display = 'none';
+        }
 
         // 안내 문구 다시 표시
         if (this.inputPlaceholder) {
@@ -2055,16 +2744,19 @@
         }
       },
 
-      toggleKeyboardMode: function() {
+      toggleKeyboardMode: function () {
         this.setKeyboardMode(!this.keyboardMode);
       },
 
-      setKeyboardMode: function(enabled) {
+      setKeyboardMode: function (enabled) {
         this.keyboardMode = !!enabled;
         if (this.keyboardMode) {
           this.barcodeDisplay.removeAttribute('readonly');
           this.barcodeDisplay.setAttribute('inputmode', 'text');
-          this.barcodeDisplay.focus();
+          var self = this;
+          setTimeout(function () {
+            self.barcodeDisplay.focus();
+          }, 50);
           if (this.keyboardBtn) {
             this.keyboardBtn.classList.add('active');
           }
@@ -2081,7 +2773,7 @@
       // ========================================
       // 통합 입력 처리 함수 (카메라/키보드/스캐너 공통)
       // ========================================
-      handleSearchInput: function(value, source) {
+      handleSearchInput: function (value, source) {
         if (this.processing) return;
 
         var input = (value || '').trim();
@@ -2092,9 +2784,14 @@
 
         console.log('[입력 처리] source=' + source + ', value=' + input);
 
+        this.lastSearchSource = source || '';
         this.keywordReturnEnabled = false;
         this.barcode = input;
         this.barcodeDisplay.value = input;
+
+        if (this.clearBtn) {
+          this.clearBtn.style.display = input ? 'flex' : 'none';
+        }
 
         // 12자리 숫자 → 바코드 검색
         if (/^\d{12}$/.test(input)) {
@@ -2109,48 +2806,49 @@
 
         var self = this;
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             self.handleKeywordSearchSuccess(result);
           })
-          .withFailureHandler(function(error) {
+          .withFailureHandler(function (error) {
             self.handleKeywordSearchError(error);
           })
           .searchByKeyword(input, this.lastSelectedCompany || '');
       },
 
-      searchFromKeyboard: function() {
+      searchFromKeyboard: function () {
         this.handleSearchInput(this.barcode, 'keyboard');
       },
-      
+
       // 제품 검색
-      searchProduct: function() {
+      searchProduct: function () {
         if (this.processing) return;
-        
+
         if (!this.barcode || this.barcode.trim() === '') {
           this.showAlert('Please enter a search term.');
           return;
         }
-        
+
+        this.lastSearchSource = 'manual';
         console.log('제품 검색:', this.barcode);
 
         this.keywordReturnEnabled = false;
-        
+
         this.processing = true;
         this.showSection('loading');
-        
+
         var self = this;
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             self.handleSearchSuccess(result);
           })
-          .withFailureHandler(function(error) {
+          .withFailureHandler(function (error) {
             self.handleSearchError(error);
           })
           .searchProduct(this.barcode);
       },
-      
+
       // 검색 성공
-      handleSearchSuccess: function(result) {
+      handleSearchSuccess: function (result) {
         this.processing = false;
 
         if (!result.success) {
@@ -2167,6 +2865,16 @@
         this.allMode = false;
         this.updateAllToggle();
 
+        var backorderPreference = localStorage.getItem('backorderAutoFill');
+        if (backorderPreference === 'false') {
+          for (var i = 0; i < this.products.length; i++) {
+            if (this.products[i].backorderApplied) {
+              this.products[i].backorderApplied = false;
+              this.products[i].quantity = 0;
+            }
+          }
+        }
+
         // ========================================
         // 메타 정보 처리 (알림 표시)
         // ========================================
@@ -2180,19 +2888,24 @@
         // ========================================
         this.displayColorStats(result.meta);
 
-        if (this.resultItemName) {
-          var firstItemName = '';
-          for (var i = 0; i < this.products.length; i++) {
-            if (!this.products[i].isGroupHeader) {
-              firstItemName = this.products[i].itemName || '';
-              break;
-            }
+        var firstProduct = null;
+        for (var i = 0; i < this.products.length; i++) {
+          if (!this.products[i].isGroupHeader) {
+            firstProduct = this.products[i];
+            break;
           }
-          if (!firstItemName && this.products.length > 0) {
-            firstItemName = this.products[0].itemName || '';
-          }
-          this.resultItemName.textContent = firstItemName;
         }
+        if (!firstProduct && this.products.length > 0) {
+          firstProduct = this.products[0];
+        }
+        if (this.resultItemName) {
+          this.resultItemName.textContent = firstProduct ? (firstProduct.itemName || '') : '';
+        }
+        var primaryFromMeta = result.meta && result.meta.primaryBarcode ? result.meta.primaryBarcode : '';
+        if (!primaryFromMeta && firstProduct && firstProduct.barcode) {
+          primaryFromMeta = firstProduct.barcode;
+        }
+        this.currentPrimaryBarcode = primaryFromMeta;
         if (this.resultCompanyBadge) {
           this.resultCompanyBadge.textContent = this.currentCompany || '';
           this.resultCompanyBadge.className = 'company-badge results-company-badge ' +
@@ -2222,8 +2935,6 @@
 
         if (hasBackorder) {
           // localStorage에서 사용자 설정 확인
-          var backorderPreference = localStorage.getItem('backorderAutoFill');
-
           if (backorderPreference === null) {
             // 설정이 없으면 모달 표시
             if (!this.backorderPrompted) {
@@ -2237,28 +2948,93 @@
           // NO로 기억한 경우 아무것도 표시하지 않음
         }
 
-        // 첫 번째 제품 자동 선택 (그룹 헤더 제외)
-        var firstIndex = -1;
-        for (var i = 0; i < this.products.length; i++) {
-          if (!this.products[i].isGroupHeader) {
-            firstIndex = i;
-            break;
+        // 우선 선택할 컬러가 있으면 해당 컬러로 이동
+        var selectBarcode = '';
+        if (!this.pendingSelectBarcode) {
+          if (this.lastSearchSource === 'camera' && result.meta && result.meta.scannedBarcode) {
+            selectBarcode = result.meta.scannedBarcode;
+          } else if (result.meta && result.meta.primaryBarcode) {
+            selectBarcode = result.meta.primaryBarcode;
+          }
+          if (selectBarcode) {
+            this.pendingSelectBarcode = selectBarcode;
           }
         }
-        if (firstIndex >= 0) {
+
+        var preferredIndex = -1;
+        if (this.pendingSelectBarcode || this.pendingSelectColor) {
+          var targetBarcode = normalizeOrderKey(this.pendingSelectBarcode);
+          var targetColor = normalizeColorValue(this.pendingSelectColor);
+          for (var i = 0; i < this.products.length; i++) {
+            if (this.products[i].isGroupHeader) continue;
+            if (targetBarcode) {
+              var rowBarcode = normalizeOrderKey(this.products[i].itemNumber || this.products[i].barcode);
+              if (rowBarcode && rowBarcode === targetBarcode) {
+                preferredIndex = i;
+                break;
+              }
+            }
+            if (preferredIndex === -1 && targetColor) {
+              var rowColor = normalizeColorValue(this.products[i].color);
+              if (rowColor && rowColor === targetColor) {
+                preferredIndex = i;
+              }
+            }
+          }
+        }
+
+        // ========================================
+        // 장바구니에서 온 경우 모든 컬러의 수량 적용
+        // ========================================
+        if (this.pendingCartQuantityMap && Object.keys(this.pendingCartQuantityMap).length > 0) {
+          console.log('장바구니 수량 맵 적용 시작:', this.pendingCartQuantityMap);
+
+          for (var i = 0; i < this.products.length; i++) {
+            if (this.products[i].isGroupHeader) continue;
+
+            var productColor = normalizeColorValue(this.products[i].color);
+            if (productColor && this.pendingCartQuantityMap[productColor]) {
+              var cartQty = this.pendingCartQuantityMap[productColor];
+              this.products[i].quantity = cartQty;
+              console.log('  - 컬러 "' + this.products[i].color + '" 수량 적용:', cartQty);
+            }
+          }
+        }
+
+        this.pendingSelectBarcode = '';
+        this.pendingSelectColor = '';
+        this.pendingCartQuantity = ''; // 초기화
+        this.pendingCartQuantityMap = {}; // 초기화
+
+        // 첫 번째 제품 자동 선택 (그룹 헤더 제외)
+        var firstIndex = -1;
+        if (preferredIndex === -1) {
+          for (var i = 0; i < this.products.length; i++) {
+            if (!this.products[i].isGroupHeader) {
+              firstIndex = i;
+              break;
+            }
+          }
+        }
+        var targetIndex = preferredIndex !== -1 ? preferredIndex : firstIndex;
+        if (targetIndex >= 0) {
           var self = this;
-          setTimeout(function() {
-            self.selectRow(firstIndex);
-            self.scrollToRow(firstIndex);
+          setTimeout(function () {
+            self.selectRow(targetIndex);
+            self.scrollToRow(targetIndex);
           }, 100);
         }
 
         if (!this.keywordReturnEnabled) {
           this.recordHistoryFromResult(result);
         }
+
+        // 즐겨찾기 버튼 및 예상 가격 업데이트
+        this.updateFavoriteButton();
+        this.updateEstimatedPrice();
       },
 
-      handleKeywordSearchSuccess: function(result) {
+      handleKeywordSearchSuccess: function (result) {
         this.processing = false;
 
         if (!result || !result.success) {
@@ -2279,17 +3055,20 @@
           this.keywordMetaEl.textContent = 'Results for "' + this.keywordQuery + '" (' + total + ')';
         }
 
+        // 인라인 키워드 필터 표시
+        this.displayInlineKeywordFilters();
+
         this.showSection('keyword-results');
       },
 
-      handleKeywordSearchError: function(error) {
+      handleKeywordSearchError: function (error) {
         this.processing = false;
         this.showSection('input');
         this.showAlert('Search failed. Please try again.');
         console.error('키워드 검색 오류:', error);
       },
 
-      selectDefaultKeywordCompany: function(result) {
+      selectDefaultKeywordCompany: function (result) {
         var results = result.results || { OUTRE: [], SNG: [] };
         var outreCount = results.OUTRE.length || 0;
         var sngCount = results.SNG.length || 0;
@@ -2311,23 +3090,28 @@
         return 'OUTRE';
       },
 
-      switchKeywordCompany: function(company) {
+      switchKeywordCompany: function (company) {
         this.activeKeywordCompany = company;
         this.lastSelectedCompany = company;
+
+        // 탭 개수 업데이트
         this.renderKeywordTabs();
-        this.renderKeywordResults();
+
+        // 현재 필터링된 결과를 다시 렌더링 (회사만 변경)
+        this.applyKeywordFiltering();
       },
 
-      setKeywordFilter: function(filter) {
+      setKeywordFilter: function (filter) {
         this.keywordFilter = filter;
         var filters = document.querySelectorAll('.keyword-filter');
         for (var i = 0; i < filters.length; i++) {
           filters[i].classList.toggle('active', filters[i].dataset.filter === filter);
         }
-        this.renderKeywordResults();
+        // 상태 필터 변경 시에도 키워드 필터 적용
+        this.applyKeywordFiltering();
       },
 
-      renderKeywordTabs: function() {
+      renderKeywordTabs: function () {
         if (!this.tabOutre || !this.tabSng) return;
         var outreCount = (this.keywordResults.OUTRE || []).length;
         var sngCount = (this.keywordResults.SNG || []).length;
@@ -2339,16 +3123,21 @@
         this.tabSng.classList.toggle('active', this.activeKeywordCompany === 'SNG');
       },
 
-      renderKeywordResults: function() {
+      renderKeywordResults: function (filteredList) {
         if (!this.keywordResultsList || !this.keywordEmptyEl) return;
         this.keywordResultsList.innerHTML = '';
 
-        var list = (this.keywordResults[this.activeKeywordCompany] || []);
+        // filteredList가 제공되면 그것을 사용, 아니면 현재 활성 회사의 리스트 사용
+        var list = filteredList || (this.keywordResults[this.activeKeywordCompany] || []);
         var filtered = [];
 
+        // 상태 필터 적용
         for (var i = 0; i < list.length; i++) {
           if (this.passesKeywordFilter(list[i])) {
-            filtered.push(list[i]);
+            // 현재 활성 회사의 제품만 필터링
+            if (list[i].company === this.activeKeywordCompany) {
+              filtered.push(list[i]);
+            }
           }
         }
 
@@ -2360,46 +3149,120 @@
 
         this.keywordEmptyEl.style.display = 'none';
 
-        for (var j = 0; j < filtered.length; j++) {
-          var item = filtered[j];
-          var row = document.createElement('div');
-          row.className = 'keyword-item';
-          row.onclick = this.openQuantityView.bind(this, item, true);
+        // 메타 정보 업데이트 (검색 결과 개수)
+        if (this.keywordMetaEl) {
+          this.keywordMetaEl.textContent = 'Results: ' + filtered.length;
+        }
 
-          var desc = document.createElement('div');
-          desc.className = 'keyword-desc';
-          desc.textContent = item.description || '';
-          if (this.isItemOrdered(item)) {
-            desc.className += ' text-shipped';
+        // 회사명을 제외한 키워드 추출 (하이라이트용)
+        var highlightKeywords = [];
+        for (var i = 0; i < this.selectedKeywordsList.length; i++) {
+          var kw = this.selectedKeywordsList[i];
+          if (kw !== 'OUTRE' && kw !== 'SNG') {
+            highlightKeywords.push(kw);
           }
+        }
 
-          var actions = document.createElement('div');
-          actions.className = 'keyword-actions';
-
-          var status = document.createElement('div');
-          status.className = 'keyword-status';
-          status.textContent = this.getKeywordStatusLabel(item);
-
-          var favBtn = document.createElement('button');
-          favBtn.className = 'favorite-btn';
-          favBtn.textContent = this.isFavorite(item) ? 'Fav' : 'Fav+';
-          favBtn.onclick = (function(self, data) {
-            return function(e) {
-              e.stopPropagation();
-              self.toggleFavorite(data);
-            };
-          })(this, item);
-
-          actions.appendChild(status);
-          actions.appendChild(favBtn);
-          row.appendChild(desc);
-          row.appendChild(actions);
-
-          this.keywordResultsList.appendChild(row);
+        // 제품 렌더링 (구분자 없이)
+        for (var j = 0; j < filtered.length; j++) {
+          this.renderKeywordItem(filtered[j], highlightKeywords);
         }
       },
 
-      passesKeywordFilter: function(item) {
+      // 키워드 아이템 렌더링 (하이라이트 포함)
+      renderKeywordItem: function (item, highlightKeywords) {
+        var row = document.createElement('div');
+        row.className = 'keyword-item';
+        row.onclick = this.openQuantityView.bind(this, item, true);
+
+        var desc = document.createElement('div');
+        desc.className = 'keyword-desc';
+
+        // 키워드 하이라이트 적용
+        var descText = item.description || '';
+        if (highlightKeywords.length > 0) {
+          desc.innerHTML = this.highlightKeywords(descText, highlightKeywords);
+        } else {
+          desc.textContent = descText;
+        }
+
+        if (this.isItemOrdered(item)) {
+          desc.className += ' text-shipped';
+        }
+
+        var actions = document.createElement('div');
+        actions.className = 'keyword-actions';
+
+        var status = document.createElement('div');
+        status.className = 'keyword-status';
+        status.textContent = this.getKeywordStatusLabel(item);
+
+        var favBtn = document.createElement('button');
+        favBtn.className = 'favorite-btn';
+        favBtn.textContent = this.isFavorite(item) ? '★' : '☆';
+        favBtn.onclick = (function (self, data) {
+          return function (e) {
+            e.stopPropagation();
+            self.toggleFavorite(data);
+          };
+        })(this, item);
+
+        actions.appendChild(status);
+        actions.appendChild(favBtn);
+        row.appendChild(desc);
+        row.appendChild(actions);
+
+        this.keywordResultsList.appendChild(row);
+      },
+
+      // 키워드 하이라이트 함수
+      highlightKeywords: function (text, keywords) {
+        if (!text) return '';
+        if (!keywords || keywords.length === 0) return escapeHtml(text);
+
+        // 1. 키워드 이스케이프 및 정규식 생성
+        var escapedKeywords = keywords
+          .filter(function(k) { return k && k.length > 0; })
+          .map(function(k) { return escapeRegExp(k); });
+
+        if (escapedKeywords.length === 0) return escapeHtml(text);
+
+        var pattern = '(' + escapedKeywords.join('|') + ')';
+        var regex = new RegExp(pattern, 'gi');
+
+        // 2. 텍스트를 키워드 기준으로 분리 (캡처 그룹 포함)
+        var parts = text.split(regex);
+        var result = '';
+
+        // 3. 각 부분을 순회하며 매칭된 부분만 하이라이트 태그 적용
+        for (var i = 0; i < parts.length; i++) {
+          var part = parts[i];
+          if (!part) continue;
+
+          // 해당 부분이 키워드와 일치하는지 확인 (대소문자 무시)
+          var isMatch = regex.test(part); 
+          // 정규식 test 후 lastIndex가 변경될 수 있으므로 다시 0으로 리셋하거나, 
+          // 단순히 parts가 정규식에 의해 쪼개진 것이므로 홀수 인덱스가 매칭된 부분임(캡처 그룹 사용 시)을 이용할 수도 있음.
+          // 하지만 간단히 키워드 목록과 비교하는 것이 안전함.
+          var lowerPart = part.toLowerCase();
+          var isKeyword = false;
+          for (var k = 0; k < keywords.length; k++) {
+            if (keywords[k].toLowerCase() === lowerPart) {
+              isKeyword = true;
+              break;
+            }
+          }
+
+          if (isKeyword) {
+            result += '<span class="keyword-highlight">' + escapeHtml(part) + '</span>';
+          } else {
+            result += escapeHtml(part);
+          }
+        }
+        return result;
+      },
+
+      passesKeywordFilter: function (item) {
         if (this.keywordFilter === 'ALL') return true;
         var counts = item.colorCounts || {};
         if (this.keywordFilter === 'ACTIVE') {
@@ -2414,7 +3277,7 @@
         return true;
       },
 
-      getKeywordStatusLabel: function(item) {
+      getKeywordStatusLabel: function (item) {
         var counts = item.colorCounts || {};
         if ((counts.discontinued || 0) > 0 && (counts.active || 0) === 0 && (counts.discontinueUnknown || 0) === 0) {
           return 'Discontinued';
@@ -2428,7 +3291,7 @@
         return 'Active';
       },
 
-      buildKeywordEmptyMessage: function() {
+      buildKeywordEmptyMessage: function () {
         var meta = this.keywordMeta || {};
         var suggestions = meta.suggestions || [];
         var tips = meta.tips || [];
@@ -2444,12 +3307,13 @@
         return lines.join(' ');
       },
 
-      backToKeywordInput: function() {
+      backToKeywordInput: function () {
         this.keywordReturnEnabled = false;
+        this.clearBarcode(); // 검색창 초기화
         this.showSection('input');
       },
 
-      backToKeywordResults: function() {
+      backToKeywordResults: function () {
         if (!this.keywordReturnEnabled) {
           this.showSection('input');
           return;
@@ -2459,36 +3323,84 @@
         this.showSection('keyword-results');
       },
 
-      openQuantityView: function(item, enableReturn) {
-        if (!item) return;
+            openQuantityView: function (item, enableReturn) {
 
-        this.keywordReturnEnabled = !!enableReturn;
-        this.setKeyboardMode(false);
-        this.saveHistoryItem({
-          type: enableReturn ? 'search' : 'quick',
-          description: item.description,
-          company: item.company,
-          primaryBarcode: item.primaryBarcode
-        });
+              if (!item) return;
 
-        this.processing = true;
-        this.showSection('loading');
+      
 
-        var self = this;
-        google.script.run
-          .withSuccessHandler(function(result) {
-            self.handleSearchSuccess(result);
-          })
-          .withFailureHandler(function(error) {
-            self.handleSearchError(error);
-          })
-          .getQuantityViewByDescription(item.description, item.company, item.primaryBarcode);
-      },
+              // ========================================
+
+              // CRITICAL: UPC 우선, Description 사용 안함
+
+              // UPC가 있으면 UPC 기반 수량 맵 생성
+
+              // ========================================
+
+              if (item.primaryBarcode && /^\d{12}$/.test(item.primaryBarcode)) {
+
+                this.buildCartQuantityMapByUPC(item.primaryBarcode);
+
+                console.log('openQuantityView - UPC 기반 수량 맵 생성 완료:', this.pendingCartQuantityMap);
+
+              } else {
+
+                // UPC가 없는 경우, 빈 맵으로 시작
+
+                this.pendingCartQuantityMap = {};
+
+                console.log('openQuantityView - UPC 없음. 빈 수량 맵으로 시작.');
+
+              }
+
+              this.keywordReturnEnabled = !!enableReturn;
+
+              this.setKeyboardMode(false);
+
+              this.saveHistoryItem({
+
+                type: enableReturn ? 'search' : 'quick',
+
+                description: item.description,
+
+                company: item.company,
+
+                primaryBarcode: item.primaryBarcode
+
+              });
+
+      
+
+              this.processing = true;
+
+              this.showSection('loading');
+
+      
+
+              var self = this;
+
+              google.script.run
+
+                .withSuccessHandler(function (result) {
+
+                  self.handleSearchSuccess(result);
+
+                })
+
+                .withFailureHandler(function (error) {
+
+                  self.handleSearchError(error);
+
+                })
+
+                .getQuantityViewByDescription(item.description, item.company, item.primaryBarcode);
+
+            },
 
       // ========================================
       // 컬러 통계 표시 (고정 위치)
       // ========================================
-      displayColorStats: function(meta) {
+      displayColorStats: function (meta) {
         // DOM 표시 부분 주석 처리 (공간 확보) - 데이터는 정상 처리됨
         /*
         var statsContainer = document.getElementById('color-stats-container');
@@ -2521,70 +3433,70 @@
         statsContainer.classList.add('visible');
         */
       },
-      
+
       // 검색 실패
-      handleSearchError: function(error) {
+      handleSearchError: function (error) {
         this.processing = false;
         this.showSection('input');
         this.showAlert('Search failed. Please try again.');
         console.error('검색 오류:', error);
         this.clearBarcode();
       },
-      
+
       // 테마 적용
-      applyTheme: function(company) {
+      applyTheme: function (company) {
         var theme = company === 'OUTRE' ? 'theme-outre' : 'theme-sng';
-        
+
         // body 테마
         document.body.className = theme;
-        
+
         // 헤더 테마
         var header = document.querySelector('.header');
         header.className = 'header ' + theme;
-        
-        // 바코드 입력 테마
-        this.barcodeDisplay.className = theme;
-        
-        // 카메라 버튼 테마
-        var cameraBtn = document.querySelector('.camera-btn');
-        cameraBtn.className = 'camera-btn ' + theme;
-        
+
+        // 프라이머리 버튼 테마 (Scan Barcode)
+        var primaryBtn = document.querySelector('.ios-btn.primary');
+        if (primaryBtn) {
+          primaryBtn.classList.remove('theme-outre', 'theme-sng');
+          primaryBtn.classList.add(theme);
+        }
+
         // 키패드 버튼 테마
         var keyBtns = document.querySelectorAll('.key-btn:not(.delete)');
         for (var i = 0; i < keyBtns.length; i++) {
           keyBtns[i].className = 'key-btn ' + theme;
         }
-        
+
         // 로딩 스피너 테마
         var spinner = document.querySelector('.spinner');
         spinner.className = 'spinner ' + theme;
-        
+
         var loadingText = document.querySelector('.loading-text');
         loadingText.className = 'loading-text ' + theme;
-        
+
         // 수량 버튼 테마
         var qtyBtns = document.querySelectorAll('.qty-btn:not(.clear)');
         for (var i = 0; i < qtyBtns.length; i++) {
           qtyBtns[i].className = 'qty-btn ' + theme;
         }
-        
+
         // 테이블 테마
         var productsTable = document.querySelector('.products-table');
         productsTable.className = 'products-table ' + theme;
-        
+
         // 상단 액션 버튼 테마 (추가 버튼만)
         var addBtnTop = document.querySelector('.action-btn-top.add');
         if (addBtnTop) {
           addBtnTop.className = 'action-btn-top add ' + theme;
         }
-        
+
         // 카메라 헤더 테마
         var cameraHeader = document.querySelector('.camera-header');
         cameraHeader.className = 'camera-header ' + theme;
       },
-      
+
       // 제품 표시
-      displayProducts: function() {
+      displayProducts: function () {
         this.productsTableBody.innerHTML = '';
 
         var theme = this.currentCompany === 'OUTRE' ? 'theme-outre' : 'theme-sng';
@@ -2610,8 +3522,8 @@
           row.className = statusConfig.rowClass;
 
           var self = this;
-          row.onclick = (function(index) {
-            return function() {
+          row.onclick = (function (index) {
+            return function () {
               self.selectRow(index);
             };
           })(i);
@@ -2635,23 +3547,25 @@
             product.quantity = 0;
           }
 
-          qtyInput.onfocus = function() {
+          qtyInput.onfocus = function () {
             this.blur();
           };
 
-          qtyInput.onclick = (function(index, input) {
-            return function(e) {
+          qtyInput.onclick = (function (index, input) {
+            return function (e) {
               e.stopPropagation();
               input.blur();
               self.selectRow(index);
             };
           })(i, qtyInput);
 
-          qtyInput.oninput = (function(index, input) {
-            return function() {
+          qtyInput.oninput = (function (index, input) {
+            return function () {
               var val = parseInt(input.value) || 0;
               self.products[index].quantity = Math.max(0, val);
               input.value = self.products[index].quantity;
+              self.showQuantityFlash(self.products[index].quantity);
+              self.updateEstimatedPrice();
             };
           })(i, qtyInput);
 
@@ -2702,109 +3616,117 @@
           priceCell.appendChild(priceText);
         }
       },
-      
+
       // 주문 페이지로 이동
-      gotoOrderPage: function(company) {
+      gotoOrderPage: function (company) {
         console.log('주문 페이지 이동:', company);
         this.viewingCompany = company;
         this.showOrderComplete();
       },
-      
+
       // 행 선택
-      selectRow: function(index) {
+      selectRow: function (index) {
         if (index < 0 || index >= this.products.length) return;
-        
+
         var rows = this.productsTableBody.rows;
         for (var i = 0; i < rows.length; i++) {
           rows[i].classList.remove('selected');
         }
-        
+
         rows[index].classList.add('selected');
         this.selectedRow = index;
       },
-      
+
       // 특정 행으로 스크롤
-      scrollToRow: function(index) {
+      scrollToRow: function (index) {
         if (index < 0 || index >= this.products.length) return;
-        
+
         var rows = this.productsTableBody.rows;
         if (!rows[index]) return;
-        
+
         var targetRow = rows[index];
         var tableContainer = document.querySelector('.table-container');
-        
+
         if (!tableContainer) return;
-        
+
         // 테이블 컨테이너 내에서 행의 상대적 위치 계산
         var containerRect = tableContainer.getBoundingClientRect();
         var rowRect = targetRow.getBoundingClientRect();
-        
+
         // 행이 컨테이너의 중앙에 오도록 스크롤
         var scrollOffset = (rowRect.top - containerRect.top) + tableContainer.scrollTop - (containerRect.height / 2) + (rowRect.height / 2);
-        
+
         // 부드러운 스크롤
         tableContainer.scrollTo({
           top: scrollOffset,
           behavior: 'smooth'
         });
-        
+
         console.log('행으로 스크롤: index=' + index);
       },
-      
+
       // 수량 조절
-      adjustQuantity: function(amount) {
+      adjustQuantity: function (amount) {
         if (this.allMode) {
           for (var i = 0; i < this.products.length; i++) {
             this.products[i].quantity = Math.max(0, (this.products[i].quantity || 0) + amount);
           }
           this.displayProducts();
+          this.showQuantityFlash('ALL');
           this.allMode = false;
           this.updateAllToggle();
+          this.updateEstimatedPrice();
           return;
         }
-        
+
         if (this.selectedRow === -1) return;
-        
-        this.products[this.selectedRow].quantity = Math.max(0, 
+
+        this.products[this.selectedRow].quantity = Math.max(0,
           (this.products[this.selectedRow].quantity || 0) + amount);
-        
+
         this.displayProducts();
         this.selectRow(this.selectedRow);
+        this.showQuantityFlash(this.products[this.selectedRow].quantity);
+        this.updateEstimatedPrice();
       },
-      
+
       // 수량 초기화
-      clearQuantity: function() {
+      clearQuantity: function () {
         if (this.allMode) {
           for (var i = 0; i < this.products.length; i++) {
             this.products[i].quantity = 0;
           }
           this.displayProducts();
+          this.showQuantityFlash('0');
           this.allMode = false;
           this.updateAllToggle();
+          this.updateEstimatedPrice();
           return;
         }
-        
+
         if (this.selectedRow === -1) return;
-        
+
         this.products[this.selectedRow].quantity = 0;
         this.displayProducts();
         this.selectRow(this.selectedRow);
+        this.showQuantityFlash('0');
+        this.updateEstimatedPrice();
       },
-      
-      toggleAllMode: function() {
+
+      toggleAllMode: function () {
         this.allMode = !this.allMode;
         this.updateAllToggle();
       },
-      
-      updateAllToggle: function() {
+
+      updateAllToggle: function () {
         var allBtn = document.querySelector('.qty-btn.all-toggle');
         if (allBtn) {
           allBtn.classList.toggle('active', this.allMode);
         }
       },
-      
+
       // 주문에 추가
-      addToOrder: function() {
+      addToOrder: function () {
         var hasQty = false;
         for (var i = 0; i < this.products.length; i++) {
           if ((this.products[i].quantity || 0) > 0) {
@@ -2812,32 +3734,32 @@
             break;
           }
         }
-        
+
         if (!hasQty) {
           this.showAlert('No quantities entered.');
           return;
         }
-        
+
         if (this.processing) return;
-        
+
         console.log('주문 추가 시작 (' + this.currentCompany + ')');
-        
+
         this.processing = true;
         this.showSection('loading');
-        
+
         var self = this;
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             self.handleAddSuccess(result);
           })
-          .withFailureHandler(function(error) {
+          .withFailureHandler(function (error) {
             self.handleAddError(error);
           })
           .addToOrder(this.products, this.currentCompany);
       },
-      
+
       // 저장 후 카메라 열기
-      saveAndOpenCamera: function() {
+      saveAndOpenCamera: function () {
         var hasQty = false;
         for (var i = 0; i < this.products.length; i++) {
           if ((this.products[i].quantity || 0) > 0) {
@@ -2845,34 +3767,34 @@
             break;
           }
         }
-        
+
         if (!hasQty) {
           // 수량 없으면 그냥 카메라만 열기
           this.reset();
           this.openCamera();
           return;
         }
-        
+
         if (this.processing) return;
-        
+
         console.log('저장 후 카메라 열기 (' + this.currentCompany + ')');
-        
+
         this.processing = true;
         this.showSection('loading');
-        
+
         var self = this;
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             self.handleSaveAndCameraSuccess(result);
           })
-          .withFailureHandler(function(error) {
+          .withFailureHandler(function (error) {
             self.handleAddError(error);
           })
           .addToOrder(this.products, this.currentCompany);
       },
-      
+
       // 저장 후 돌아가기
-      saveAndGoBack: function() {
+      saveAndGoBack: function () {
         var hasQty = false;
         for (var i = 0; i < this.products.length; i++) {
           if ((this.products[i].quantity || 0) > 0) {
@@ -2880,36 +3802,37 @@
             break;
           }
         }
-        
+
         if (!hasQty) {
           // 수량 없으면 그냥 돌아가기
           this.reset();
           return;
         }
-        
+
         if (this.processing) return;
-        
+
         console.log('저장 후 돌아가기 (' + this.currentCompany + ')');
-        
+
         this.processing = true;
         this.showSection('loading');
-        
+
         var self = this;
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             self.handleSaveAndBackSuccess(result);
           })
-          .withFailureHandler(function(error) {
+          .withFailureHandler(function (error) {
             self.handleAddError(error);
           })
           .addToOrder(this.products, this.currentCompany);
       },
-      
+
       // 추가 성공
-      handleAddSuccess: function(result) {
+      handleAddSuccess: function (result) {
         this.processing = false;
-        
+
         if (result.success) {
+          this.refreshCartTotal(this.currentCompany);
           this.showAlert(result.message, 2000);
           this.reset();
         } else {
@@ -2917,16 +3840,17 @@
           this.showSection('results');
         }
       },
-      
+
       // 저장 후 카메라 성공
-      handleSaveAndCameraSuccess: function(result) {
+      handleSaveAndCameraSuccess: function (result) {
         this.processing = false;
-        
+
         if (result.success) {
+          this.refreshCartTotal(this.currentCompany);
           // 알림 없이 바로 리셋하고 카메라 열기
           this.reset();
           var self = this;
-          setTimeout(function() {
+          setTimeout(function () {
             self.openCamera();
           }, 100);
         } else {
@@ -2934,12 +3858,13 @@
           this.showSection('results');
         }
       },
-      
+
       // 저장 후 돌아가기 성공
-      handleSaveAndBackSuccess: function(result) {
+      handleSaveAndBackSuccess: function (result) {
         this.processing = false;
 
         if (result.success) {
+          this.refreshCartTotal(this.currentCompany);
           // 알림 없이 바로 리셋
           this.reset();
         } else {
@@ -2949,7 +3874,7 @@
       },
 
       // 추가 실패
-      handleAddError: function(error) {
+      handleAddError: function (error) {
         this.processing = false;
         this.showSection('results');
         this.showAlert('Failed to add items to the order.');
@@ -2957,23 +3882,28 @@
       },
 
       // 취소 (저장 없이 검색창으로)
-      cancelToSearch: function() {
-        console.log('저장 없이 검색창으로 돌아가기');
-        this.reset();
+      cancelToSearch: function () {
+        var self = this;
+        this.persistOrderAndThen(function () {
+          console.log('저장 없이 검색창으로 돌아가기');
+          self.reset();
+        });
       },
 
       // 취소
-      cancel: function() {
+      cancel: function () {
         this.reset();
       },
-      
+
       // 리셋
-      reset: function() {
+      reset: function () {
         this.barcode = '';
         this.products = [];
         this.selectedRow = -1;
         this.processing = false;
         this.currentCompany = null;
+        this.currentPrimaryBarcode = '';
+        this.lastSearchSource = '';
         this.allMode = false;
         this.keywordReturnEnabled = false;
         this.barcodeDisplay.value = '';
@@ -2985,25 +3915,25 @@
           this.resultCompanyBadge.className = 'company-badge results-company-badge';
         }
         this.updateAllToggle();
-        
+
         // 초기 테마로 복귀
         this.applyTheme(null);
 
         // 기본 스캔 모드로 복귀
         this.setKeyboardMode(false);
-        
+
         this.showSection('input');
       },
-      
+
       // 섹션 표시
-      showSection: function(section) {
+      showSection: function (section) {
         var header = document.querySelector('.header');
-        
+
         this.inputSection.style.display = section === 'input' ? 'block' : 'none';
         this.resultsSection.style.display = section === 'results' ? 'flex' : 'none';
         this.keywordResultsSection.style.display = section === 'keyword-results' ? 'flex' : 'none';
         this.loading.style.display = section === 'loading' ? 'block' : 'none';
-        
+
         // 결과/키워드 화면에서는 헤더 숨김
         if (section === 'results' || section === 'keyword-results') {
           header.style.display = 'none';
@@ -3011,30 +3941,84 @@
           header.style.display = 'block';
         }
       },
-      
+
       // 알림 표시
-      showAlert: function(message, duration) {
+      showAlert: function (message, duration) {
         var self = this;
         this.alertMessage.textContent = message;
         this.alertMessage.className = 'show';
-        
-        setTimeout(function() {
+
+        setTimeout(function () {
           self.alertMessage.className = '';
         }, duration || 3000);
       },
 
+      showQuantityFlash: function (value) {
+        if (!this.quantityFlashEl) return;
+        this.quantityFlashEl.textContent = value;
+        this.quantityFlashEl.classList.remove('show');
+        void this.quantityFlashEl.offsetWidth;
+        this.quantityFlashEl.classList.add('show');
+      },
+
+      // 현재 수량을 장바구니에 반영한 뒤 다음 동작 수행
+      persistOrderAndThen: function (nextAction) {
+        var self = this;
+        var hasQty = false;
+        for (var i = 0; i < this.products.length; i++) {
+          if ((this.products[i].quantity || 0) > 0) {
+            hasQty = true;
+            break;
+          }
+        }
+
+        if (!hasQty || !this.currentCompany) {
+          if (nextAction) nextAction();
+          return;
+        }
+
+        if (this.processing) return;
+
+        this.processing = true;
+        this.showSection('loading');
+
+        google.script.run
+          .withSuccessHandler(function (result) {
+            self.processing = false;
+            if (!result || !result.success) {
+              self.showAlert(result && result.error ? result.error : 'Failed to save quantities.');
+              self.showSection('results');
+              return;
+            }
+            self.refreshCartTotal(self.currentCompany);
+            if (nextAction) nextAction();
+          })
+          .withFailureHandler(function (error) {
+            self.processing = false;
+            self.showAlert('Failed to save quantities.');
+            self.showSection('results');
+            console.error('자동 저장 오류:', error);
+          })
+          .addToOrder(this.products, this.currentCompany);
+      },
+
       // ===== 최근 검색 / 즐겨찾기 =====
-      buildHistoryKey: function(item) {
+      buildHistoryKey: function (item) {
         return [item.description, item.company, item.primaryBarcode].join('||');
       },
 
-      isItemOrdered: function(item) {
+      isItemOrdered: function (item) {
         if (!item) return false;
         if (item.hasOrder) return true;
+        var company = item.company || this.activeKeywordCompany || this.currentCompany;
+        var descKey = normalizeOrderDescription(item.description || item.itemName || '');
+        if (company && descKey && this.orderDescriptionMap[company] && this.orderDescriptionMap[company][descKey]) {
+          return true;
+        }
         return (item.primaryShipped12mo || 0) > 0;
       },
 
-      loadLocalHistory: function() {
+      loadLocalHistory: function () {
         try {
           this.history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
         } catch (e) {
@@ -3042,7 +4026,7 @@
         }
       },
 
-      loadLocalFavorites: function() {
+      loadLocalFavorites: function () {
         try {
           this.favorites = JSON.parse(localStorage.getItem('searchFavorites') || '[]');
         } catch (e) {
@@ -3050,7 +4034,7 @@
         }
       },
 
-      saveHistoryItem: function(item) {
+      saveHistoryItem: function (item) {
         if (!item || !item.description || !item.company || !item.primaryBarcode) return;
         if (item.hasOrder === undefined) {
           item.hasOrder = (item.primaryShipped12mo || 0) > 0;
@@ -3067,13 +4051,13 @@
         this.renderHistory();
 
         google.script.run
-          .withFailureHandler(function() {
+          .withFailureHandler(function () {
             console.log('서버 히스토리 백업 실패');
           })
           .saveHistoryToServer(item);
       },
 
-      recordHistoryFromResult: function(result) {
+      recordHistoryFromResult: function (result) {
         if (!result || !result.meta || !result.meta.scannedProduct) return;
         var product = result.meta.scannedProduct;
         if (!product.itemName || !product.barcode) return;
@@ -3088,19 +4072,20 @@
           }
         }
 
+        var primaryBarcode = result.meta && result.meta.primaryBarcode ? result.meta.primaryBarcode : product.barcode;
         this.saveHistoryItem({
           type: 'scan',
           description: product.itemName,
           company: result.company,
-          primaryBarcode: product.barcode,
+          primaryBarcode: primaryBarcode,
           hasOrder: shipped12mo > 0
         });
       },
 
-      restoreHistoryFromServer: function() {
+      restoreHistoryFromServer: function () {
         var self = this;
         google.script.run
-          .withSuccessHandler(function(serverHistory) {
+          .withSuccessHandler(function (serverHistory) {
             if (!serverHistory || serverHistory.length === 0) return;
             var merged = serverHistory.slice();
             var existing = self.history || [];
@@ -3121,7 +4106,7 @@
           .getHistoryFromServer();
       },
 
-      renderHistory: function() {
+      renderHistory: function () {
         if (!this.historyList || !this.historyEmpty) return;
         this.historyList.innerHTML = '';
         if (!this.history || this.history.length === 0) {
@@ -3152,7 +4137,7 @@
         }
       },
 
-      renderFavorites: function() {
+      renderFavorites: function () {
         if (!this.favoritesList || !this.favoritesEmpty) return;
         this.favoritesList.innerHTML = '';
         if (!this.favorites || this.favorites.length === 0) {
@@ -3183,7 +4168,7 @@
         }
       },
 
-      isFavorite: function(item) {
+      isFavorite: function (item) {
         if (!item) return false;
         var key = this.buildHistoryKey(item);
         for (var i = 0; i < this.favorites.length; i++) {
@@ -3194,7 +4179,7 @@
         return false;
       },
 
-      toggleFavorite: function(item) {
+      toggleFavorite: function (item) {
         if (!item) return;
         if (item.hasOrder === undefined) {
           item.hasOrder = (item.primaryShipped12mo || 0) > 0;
@@ -3221,16 +4206,16 @@
         this.renderKeywordResults();
 
         google.script.run
-          .withFailureHandler(function() {
+          .withFailureHandler(function () {
             console.log('서버 즐겨찾기 백업 실패');
           })
           .saveFavoriteToServer(item, removed ? 'remove' : 'add');
       },
 
-      restoreFavoritesFromServer: function() {
+      restoreFavoritesFromServer: function () {
         var self = this;
         google.script.run
-          .withSuccessHandler(function(serverFavorites) {
+          .withSuccessHandler(function (serverFavorites) {
             if (!serverFavorites || serverFavorites.length === 0) return;
             var merged = serverFavorites.slice();
             var map = {};
@@ -3250,21 +4235,68 @@
           })
           .getFavoritesFromServer();
       },
-      
+
       // ===== 카메라 기능 (ZXing - 강력한 모바일 지원) =====
-      
+
       codeReader: null,
       videoElement: null,
       canvasElement: null,
-      
-      openCamera: function() {
-        console.log('카메라 열기');
-        this.setKeyboardMode(false);
-        this.cameraModal.classList.add('active');
-        this.startCamera();
+      cameraDeviceId: null,
+      cameraPermissionReady: false,
+
+      openCamera: function () {
+        var self = this;
+        this.persistOrderAndThen(function () {
+          console.log('카메라 열기');
+          self.setKeyboardMode(false);
+          self.cameraModal.classList.add('active');
+          self.startCamera();
+        });
       },
-      
-      startCamera: function() {
+
+      ensureCameraPermission: function () {
+        var self = this;
+        if (this.cameraPermissionReady && this.cameraDeviceId) {
+          return Promise.resolve(this.cameraDeviceId);
+        }
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          return Promise.reject(new Error('Camera not supported.'));
+        }
+
+        return navigator.mediaDevices.getUserMedia({ video: true })
+          .then(function (stream) {
+            var tracks = stream.getTracks();
+            for (var i = 0; i < tracks.length; i++) {
+              tracks[i].stop();
+            }
+            self.cameraPermissionReady = true;
+            return self.codeReader.listVideoInputDevices();
+          })
+          .then(function (videoInputDevices) {
+            if (!videoInputDevices || videoInputDevices.length === 0) {
+              throw new Error('No camera device found.');
+            }
+
+            var selectedDeviceId = videoInputDevices[0].deviceId;
+            for (var i = 0; i < videoInputDevices.length; i++) {
+              var device = videoInputDevices[i];
+              var label = device.label.toLowerCase();
+              if (label.indexOf('back') > -1 ||
+                label.indexOf('rear') > -1 ||
+                label.indexOf('환경') > -1 ||
+                label.indexOf('후면') > -1) {
+                selectedDeviceId = device.deviceId;
+                break;
+              }
+            }
+
+            self.cameraDeviceId = selectedDeviceId;
+            return selectedDeviceId;
+          });
+      },
+
+      startCamera: function () {
         var self = this;
 
         // ZXing 초기화
@@ -3274,31 +4306,12 @@
 
         console.log('ZXing 카메라 시작...');
 
-        // 후면 카메라 선택
-        this.codeReader.listVideoInputDevices()
-          .then(function(videoInputDevices) {
-            console.log('감지된 카메라:', videoInputDevices.length + '개');
-
-            // 후면 카메라 찾기
-            var selectedDeviceId = videoInputDevices[0].deviceId;
-
-            for (var i = 0; i < videoInputDevices.length; i++) {
-              var device = videoInputDevices[i];
-              var label = device.label.toLowerCase();
-
-              // 후면 카메라 키워드
-              if (label.indexOf('back') > -1 ||
-                  label.indexOf('rear') > -1 ||
-                  label.indexOf('환경') > -1 ||
-                  label.indexOf('후면') > -1) {
-                selectedDeviceId = device.deviceId;
-                console.log('후면 카메라 선택:', device.label);
-                break;
-              }
-            }
+        this.ensureCameraPermission()
+          .then(function (selectedDeviceId) {
+            console.log('후면 카메라 선택:', selectedDeviceId);
 
             // 연속 스캔 시작
-            self.codeReader.decodeFromVideoDevice(selectedDeviceId, self.videoElement, function(result, err) {
+            self.codeReader.decodeFromVideoDevice(selectedDeviceId, self.videoElement, function (result, err) {
               if (result && result.text) {
                 var scannedBarcode = result.text;
                 console.log('바코드 감지:', scannedBarcode);
@@ -3306,7 +4319,7 @@
                 // 12자리 숫자 바코드인지 확인
                 if (/^\d{12}$/.test(scannedBarcode)) {
                   console.log('✅ 유효한 바코드:', scannedBarcode);
-                  
+
                   // 여러 번 스캔되는 것을 방지하기 위해 즉시 카메라를 닫습니다.
                   self.closeCamera();
 
@@ -3314,7 +4327,7 @@
                   if (navigator.vibrate) {
                     navigator.vibrate(150);
                   }
-                  
+
                   // 통합 검색 핸들러를 호출합니다.
                   self.handleSearchInput(scannedBarcode, 'camera');
 
@@ -3333,23 +4346,23 @@
             self.cameraActive = true;
             console.log('카메라 시작 성공');
           })
-          .catch(function(err) {
+          .catch(function (err) {
             console.error('카메라 접근 오류:', err);
             self.showAlert('Unable to start the camera.\n\nPlease check camera permissions.');
             self.closeCamera();
           });
       },
-      
-      closeCamera: function() {
+
+      closeCamera: function () {
         console.log('카메라 닫기');
-        
+
         try {
           // ZXing 카메라 중지
           if (this.codeReader) {
             this.codeReader.reset();
             this.codeReader = null;
           }
-          
+
           // 비디오 스트림 중지
           if (this.videoElement && this.videoElement.srcObject) {
             var tracks = this.videoElement.srcObject.getTracks();
@@ -3361,101 +4374,535 @@
         } catch (e) {
           console.log('카메라 중지 오류:', e);
         }
-        
+
         this.cameraModal.classList.remove('active');
         this.cameraActive = false;
       },
-      
+
       // ===== ORDER COMPLETE 기능 =====
-      
-      showOrderComplete: function() {
-        console.log('ORDER COMPLETE 열기');
-        this.loadOrderData(this.viewingCompany);
-        this.orderModal.classList.add('active');
+
+      showOrderComplete: function () {
+        var self = this;
+        this.persistOrderAndThen(function () {
+          console.log('ORDER COMPLETE 열기');
+          self.loadOrderData(self.viewingCompany);
+          var otherCompany = self.viewingCompany === 'SNG' ? 'OUTRE' : 'SNG';
+          self.loadOrderData(otherCompany);
+          self.orderModal.classList.add('active');
+        });
       },
-      
+
       // 회사 전환
-      switchCompany: function(company) {
+      switchCompany: function (company) {
         this.viewingCompany = company;
-        
+
         // 탭 활성화 상태 변경
         var tabs = document.querySelectorAll('.company-tab');
         for (var i = 0; i < tabs.length; i++) {
           tabs[i].classList.remove('active');
         }
-        
-        var activeTab = company === 'SNG' ? 
-          document.querySelector('.company-tab.tab-sng') : 
+
+        var activeTab = company === 'SNG' ?
+          document.querySelector('.company-tab.tab-sng') :
           document.querySelector('.company-tab.tab-outre');
         activeTab.classList.add('active');
-        
+
         // 해당 회사 데이터 로드
         this.loadOrderData(company);
       },
-      
+
       // 주문 데이터 로드
-      loadOrderData: function(company) {
+      loadOrderData: function (company) {
+        var nextId = (this.orderLoadRequestId[company] || 0) + 1;
+        this.orderLoadRequestId[company] = nextId;
+        var requestId = nextId;
         var self = this;
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
+            if (requestId !== self.orderLoadRequestId[company]) return;
             self.displayOrderData(result, company);
           })
-          .withFailureHandler(function(error) {
+          .withFailureHandler(function (error) {
+            if (requestId !== self.orderLoadRequestId[company]) return;
             self.showAlert('Failed to load order data.');
             console.error('조회 오류:', error);
           })
           .getOrderData(company);
       },
-      
-      displayOrderData: function(result, company) {
+
+      displayOrderData: function (result, company) {
         if (!result.success) {
           this.showAlert(result.error);
           return;
         }
-        
+
         this.orderData[company] = result.data || [];
-        
-        if (this.orderData[company].length === 0) {
-          this.orderModalBody.innerHTML = '<div class="empty-message">No orders yet.</div>';
-        } else {
-          var html = '<div class="order-table-container"><table class="order-table">';
-          
-          for (var i = 0; i < this.orderData[company].length; i++) {
-            var row = this.orderData[company][i];
-            html += '<tr>';
-            
-            for (var j = 0; j < row.length; j++) {
-              var tag = i === 0 ? 'th' : 'td';
-              html += '<' + tag + '>' + (row[j] || '') + '</' + tag + '>';
+        // ========================================
+        // CRITICAL: UPC 리스트 저장
+        // ========================================
+        this.orderData[company + '_upcList'] = result.upcList || [];
+
+        var tabAmountEl = document.getElementById(company === 'SNG' ? 'tabAmountSng' : 'tabAmountOutre');
+        var total = 0;
+        var descriptionMap = {};
+
+        if (this.orderData[company].length > 0) {
+          var rows = this.orderData[company];
+          var headers = rows[0] || [];
+          var dataRows = rows.slice(1);
+          var upcList = result.upcList || [];
+          var itemNameIdx = headers.indexOf('ITEM NAME');
+          var colorIdx = headers.indexOf('COLOR');
+          var unitPriceIdx = headers.indexOf('UNIT PRICE');
+          var extPriceIdx = headers.indexOf('EXT PRICE');
+
+          if (extPriceIdx !== -1) {
+            for (var t = 0; t < dataRows.length; t++) {
+              var extVal = dataRows[t][extPriceIdx];
+              var parsed = parseFloat(extVal);
+              if (!isNaN(parsed)) {
+                total += parsed;
+              }
             }
-            
-            html += '</tr>';
           }
-          
-          html += '</table></div>';
+
+          if (itemNameIdx !== -1) {
+            for (var m = 0; m < dataRows.length; m++) {
+              var descValue = dataRows[m][itemNameIdx];
+              var descKey = normalizeOrderDescription(descValue);
+              if (descKey) {
+                descriptionMap[descKey] = true;
+              }
+            }
+          }
+
+          if (company !== this.viewingCompany) {
+            if (tabAmountEl) tabAmountEl.textContent = '$' + total.toFixed(2);
+            this.orderDescriptionMap[company] = descriptionMap;
+            return;
+          }
+
+          // 장바구니에는 ITEM NAME, COLOR, 수량만 표시
+          var qtyIdx = headers.indexOf('수량');
+          if (qtyIdx === -1) {
+            qtyIdx = headers.indexOf('?˜ëŸ‰');
+          }
+
+          var displayColumns = [
+            { idx: itemNameIdx, header: 'ITEM NAME' },
+            { idx: colorIdx, header: 'COLOR' },
+            { idx: qtyIdx, header: '수량' }
+          ];
+
+          var html = '<div class="order-list">';
+
+          // 헤더 렌더링
+          html += '<div class="order-row order-row-header"><div class="order-row-content">';
+          for (var h = 0; h < displayColumns.length; h++) {
+            if (displayColumns[h].idx !== -1) {
+              html += '<div class="order-row-cell">' + escapeHtml(displayColumns[h].header) + '</div>';
+            }
+          }
+          html += '</div></div>';
+
+          // 데이터 행 렌더링
+          for (var i = 0; i < dataRows.length; i++) {
+            var row = dataRows[i];
+            var upcValue = upcList[i] || '';
+            var descValue = itemNameIdx !== -1 ? (row[itemNameIdx] || '') : '';
+            var colorValue = colorIdx !== -1 ? (row[colorIdx] || '') : '';
+            var qtyValue = qtyIdx !== -1 ? (row[qtyIdx] || '') : '';
+
+            var dataAttr = upcValue ? ' data-upc="' + escapeHtml(upcValue) + '"' : '';
+            dataAttr += descValue ? ' data-desc="' + escapeHtml(descValue) + '"' : '';
+            dataAttr += colorValue ? ' data-color="' + escapeHtml(colorValue) + '"' : '';
+            dataAttr += qtyValue ? ' data-qty="' + escapeHtml(qtyValue) + '"' : '';
+
+            html += '<div class="order-row"' + dataAttr + '>';
+            html += '<div class="order-row-content">';
+
+            // ITEM NAME, COLOR, 수량만 표시
+            for (var j = 0; j < displayColumns.length; j++) {
+              if (displayColumns[j].idx !== -1) {
+                var cellValue = row[displayColumns[j].idx];
+                html += '<div class="order-row-cell">' + escapeHtml(cellValue || '') + '</div>';
+              }
+            }
+
+            html += '</div>';
+            if (upcValue) {
+              html += '<button class="order-row-delete" onclick="app.deleteOrderRow(this)">DELETE</button>';
+            }
+            html += '</div>';
+          }
+
+          html += '</div>';
           this.orderModalBody.innerHTML = html;
+          this.bindOrderRowSwipes();
+          this.bindOrderRowClicks();
+        } else if (company === this.viewingCompany) {
+          this.orderModalBody.innerHTML = '<div class="empty-message">No orders yet.</div>';
+        }
+
+        if (tabAmountEl) {
+          tabAmountEl.textContent = '$' + total.toFixed(2);
+        }
+        this.orderDescriptionMap[company] = descriptionMap;
+        this.setCartTotal(company, total);
+      },
+
+      bindOrderRowSwipes: function () {
+        var rows = this.orderModalBody.querySelectorAll('.order-row[data-upc]');
+        var self = this;
+
+        for (var i = 0; i < rows.length; i++) {
+          (function (row) {
+            var content = row.querySelector('.order-row-content');
+            var startX = 0;
+            var startY = 0;
+            var currentX = 0;
+            var touching = false;
+
+            row.addEventListener('touchstart', function (e) {
+              if (!e.touches || e.touches.length === 0) return;
+              startX = e.touches[0].clientX;
+              startY = e.touches[0].clientY;
+              currentX = startX;
+              touching = true;
+
+              var openRows = self.orderModalBody.querySelectorAll('.order-row.swiped');
+              for (var j = 0; j < openRows.length; j++) {
+                if (openRows[j] !== row) {
+                  openRows[j].classList.remove('swiped');
+                }
+              }
+            });
+
+            row.addEventListener('touchmove', function (e) {
+              if (!touching || !e.touches || e.touches.length === 0) return;
+              currentX = e.touches[0].clientX;
+              var currentY = e.touches[0].clientY;
+              var deltaX = currentX - startX;
+              var deltaY = currentY - startY;
+
+              if (Math.abs(deltaX) < Math.abs(deltaY)) {
+                return;
+              }
+
+              if (deltaX < 0) {
+                e.preventDefault();
+                var translate = Math.max(-80, deltaX);
+                content.style.transform = 'translateX(' + translate + 'px)';
+              } else {
+                content.style.transform = '';
+              }
+            }, { passive: false });
+
+            row.addEventListener('touchend', function () {
+              if (!touching) return;
+              var deltaX = currentX - startX;
+              content.style.transform = '';
+              if (deltaX < -40) {
+                row.classList.add('swiped');
+              } else {
+                row.classList.remove('swiped');
+              }
+              touching = false;
+            });
+          })(rows[i]);
         }
       },
-      
-      copyOrderData: function() {
+
+      bindOrderRowClicks: function () {
+        var rows = this.orderModalBody.querySelectorAll('.order-row[data-upc]');
+        var self = this;
+
+        for (var i = 0; i < rows.length; i++) {
+          (function (row) {
+            var content = row.querySelector('.order-row-content');
+            if (!content) return;
+            content.addEventListener('click', function (e) {
+              if (e.target && e.target.closest('.order-row-delete')) return;
+              var desc = row.getAttribute('data-desc') || '';
+              var color = row.getAttribute('data-color') || '';
+              var upc = row.getAttribute('data-upc') || '';
+              var qty = row.getAttribute('data-qty') || '';
+              self.openOrderItemFromCart(desc, color, upc, qty);
+            });
+          })(rows[i]);
+        }
+      },
+
+      deleteOrderRow: function (button) {
+        var row = button.closest('.order-row');
+        if (!row) return;
+        var upc = row.getAttribute('data-upc');
+        if (!upc) return;
+        var color = row.getAttribute('data-color') || '';
+
+        // Optimistic UI: remove immediately from the list
+        row.parentNode.removeChild(row);
+        var remaining = this.orderModalBody.querySelectorAll('.order-row[data-upc]').length;
+        if (remaining === 0) {
+          this.orderModalBody.innerHTML = '<div class="empty-message">No orders yet.</div>';
+        }
+
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function (result) {
+            if (result && result.success) {
+              self.loadOrderData(self.viewingCompany);
+              self.syncCurrentOrderDeletion(upc, color);
+            } else {
+              self.showAlert(result && result.error ? result.error : 'Failed to delete item.');
+              self.loadOrderData(self.viewingCompany);
+            }
+          })
+          .withFailureHandler(function () {
+            self.showAlert('Failed to delete item.');
+            self.loadOrderData(self.viewingCompany);
+          })
+          .removeOrderItem(this.viewingCompany, upc, color);
+      },
+
+      openOrderItemFromCart: function (description, color, upc, qty) {
+        // ========================================
+        // CRITICAL: UPC 우선 사용
+        // UPC가 있으면 바코드 검색, 없으면 Description 검색
+        // ========================================
+        if (!upc && !description) {
+          this.showAlert('No product information available.');
+          return;
+        }
+
+        console.log('장바구니에서 제품 열기:', { description: description, color: color, upc: upc, qty: qty });
+
+        // 장바구니 수량 맵 생성 (UPC 기반, 실패 시 Description fallback)
+        this.buildCartQuantityMapByUPC(upc);
+        if ((!this.pendingCartQuantityMap || Object.keys(this.pendingCartQuantityMap).length === 0) && description) {
+          this.buildCartQuantityMap(description);
+          console.log('장바구니 수량 맵 - UPC 매칭 실패, Description fallback:', this.pendingCartQuantityMap);
+        }
+
+        this.pendingSelectColor = color || '';
+        this.pendingSelectBarcode = upc || '';
+        this.keywordReturnEnabled = false;
+        this.setKeyboardMode(false);
+        this.closeOrderModal();
+
+        // UPC가 있으면 바코드로 검색 (더 정확함)
+        if (upc && /^\d{12}$/.test(upc)) {
+          console.log('UPC로 검색:', upc);
+          this.barcode = upc;
+          this.barcodeDisplay.value = upc;
+          this.searchProduct();
+        } else if (description) {
+          // UPC가 없거나 유효하지 않으면 Description으로 검색
+          console.log('Description으로 검색:', description);
+          this.openQuantityView({
+            description: description,
+            company: this.viewingCompany,
+            primaryBarcode: upc || ''
+          }, false);
+        } else {
+          this.showAlert('Invalid product information.');
+        }
+      },
+
+      // 장바구니에서 해당 제품의 모든 컬러별 수량 맵 생성
+      buildCartQuantityMap: function(description) {
+        console.log('========================================');
+        console.log('buildCartQuantityMap 호출됨');
+        console.log('  Description:', description);
+        console.log('  viewingCompany:', this.viewingCompany);
+
+        this.pendingCartQuantityMap = {};
+
+        if (!this.orderData[this.viewingCompany] || this.orderData[this.viewingCompany].length === 0) {
+          console.log('  ⚠️ 장바구니 데이터 없음');
+          return;
+        }
+
+        var rows = this.orderData[this.viewingCompany];
+        var headers = rows[0] || [];
+        var dataRows = rows.slice(1);
+
+        console.log('  장바구니 헤더:', headers);
+        console.log('  장바구니 데이터 행 수:', dataRows.length);
+
+        var itemNameIdx = headers.indexOf('ITEM NAME');
+        var colorIdx = headers.indexOf('COLOR');
+        var qtyIdx = headers.indexOf('수량');
+        if (qtyIdx === -1) {
+          qtyIdx = headers.indexOf('?˜ëŸ‰');
+        }
+
+        console.log('  컬럼 인덱스 - ITEM NAME:', itemNameIdx, 'COLOR:', colorIdx, '수량:', qtyIdx);
+
+        if (itemNameIdx === -1 || colorIdx === -1 || qtyIdx === -1) {
+          console.log('  ⚠️ 필수 컬럼 누락');
+          return;
+        }
+
+        var normalizedTarget = normalizeOrderDescription(description);
+        console.log('  정규화된 타겟:', normalizedTarget);
+
+        var matchCount = 0;
+        for (var i = 0; i < dataRows.length; i++) {
+          var row = dataRows[i];
+          var rowDesc = normalizeOrderDescription(row[itemNameIdx] || '');
+
+          if (rowDesc === normalizedTarget) {
+            matchCount++;
+            var rowColor = normalizeColorValue(row[colorIdx] || '');
+            var rowQty = parseInt(row[qtyIdx]) || 0;
+
+            console.log('  ✓ 매칭됨 [' + i + ']:');
+            console.log('    - 원본 Description:', row[itemNameIdx]);
+            console.log('    - 정규화 Description:', rowDesc);
+            console.log('    - 원본 Color:', row[colorIdx]);
+            console.log('    - 정규화 Color:', rowColor);
+            console.log('    - 수량:', rowQty);
+
+            if (rowColor && rowQty > 0) {
+              this.pendingCartQuantityMap[rowColor] = rowQty;
+            }
+          }
+        }
+
+        console.log('  매칭된 행 수:', matchCount);
+        console.log('  최종 수량 맵:', this.pendingCartQuantityMap);
+        console.log('========================================');
+      },
+
+      // ========================================
+      // UPC 기반 장바구니 수량 맵 생성 (더 정확함)
+      // ========================================
+      buildCartQuantityMapByUPC: function(upc) {
+        console.log('========================================');
+        console.log('buildCartQuantityMapByUPC 호출됨');
+        console.log('  UPC:', upc);
+        console.log('  viewingCompany:', this.viewingCompany);
+
+        this.pendingCartQuantityMap = {};
+
+        if (!upc) {
+          console.log('  ⚠️ UPC 없음');
+          return;
+        }
+
+        if (!this.orderData[this.viewingCompany] || this.orderData[this.viewingCompany].length === 0) {
+          console.log('  ⚠️ 장바구니 데이터 없음');
+          return;
+        }
+
+        var rows = this.orderData[this.viewingCompany];
+        var headers = rows[0] || [];
+        var dataRows = rows.slice(1);
+        var upcList = this.orderData[this.viewingCompany + '_upcList'] || [];
+
+        console.log('  장바구니 헤더:', headers);
+        console.log('  장바구니 데이터 행 수:', dataRows.length);
+        console.log('  UPC 리스트 개수:', upcList.length);
+
+        var colorIdx = headers.indexOf('COLOR');
+        var qtyIdx = headers.indexOf('수량');
+        if (qtyIdx === -1) {
+          qtyIdx = headers.indexOf('?˜ëŸ‰');
+        }
+
+        console.log('  컬럼 인덱스 - COLOR:', colorIdx, '수량:', qtyIdx);
+
+        if (colorIdx === -1 || qtyIdx === -1) {
+          console.log('  ⚠️ 필수 컬럼 누락');
+          return;
+        }
+
+        var normalizedTargetUPC = normalizeOrderKey(upc);
+        console.log('  정규화된 타겟 UPC:', normalizedTargetUPC);
+
+        var matchCount = 0;
+        for (var i = 0; i < dataRows.length; i++) {
+          var rowUpc = upcList[i] || '';
+          var normalizedRowUPC = normalizeOrderKey(rowUpc);
+
+          if (normalizedRowUPC === normalizedTargetUPC) {
+            matchCount++;
+            var row = dataRows[i];
+            var rowColor = normalizeColorValue(row[colorIdx] || '');
+            var rowQty = parseInt(row[qtyIdx]) || 0;
+
+            console.log('  ✓ UPC 매칭됨 [' + i + ']:');
+            console.log('    - 원본 UPC:', rowUpc);
+            console.log('    - 정규화 UPC:', normalizedRowUPC);
+            console.log('    - 원본 Color:', row[colorIdx]);
+            console.log('    - 정규화 Color:', rowColor);
+            console.log('    - 수량:', rowQty);
+
+            if (rowColor && rowQty > 0) {
+              this.pendingCartQuantityMap[rowColor] = rowQty;
+            }
+          }
+        }
+
+        console.log('  매칭된 행 수:', matchCount);
+        console.log('  최종 수량 맵:', this.pendingCartQuantityMap);
+        console.log('========================================');
+      },
+
+      syncCurrentOrderDeletion: function (upc, color) {
+        if (!this.products || this.products.length === 0) return;
+        if (this.currentCompany !== this.viewingCompany) return;
+
+        var targetUpc = normalizeOrderKey(upc);
+        var targetColor = normalizeColorValue(color);
+        var updated = false;
+
+        for (var i = 0; i < this.products.length; i++) {
+          var product = this.products[i];
+          if (product.isGroupHeader) continue;
+          var productKey = normalizeOrderKey(product.itemNumber || product.barcode);
+          if (targetUpc && productKey !== targetUpc) continue;
+          if (targetColor) {
+            var productColor = normalizeColorValue(product.color);
+            if (productColor !== targetColor) continue;
+          }
+          product.quantity = 0;
+          product.cartQuantity = 0;
+          product.backorderApplied = false;
+          updated = true;
+        }
+
+        if (updated) {
+          this.displayProducts();
+          // 가격 업데이트는 displayProducts 내부나 별도로 호출 필요 없으나
+          // 확실히 하기 위해 호출. 단, 서버 데이터 기준이므로 즉시 반영은 안 될 수 있음.
+          // 하지만 로컬 수량이 0이 되었으므로 로컬 계산 로직이 있다면 0으로 줄어듦.
+          // 현재 로직 변경으로 서버 데이터만 보여주게 되므로, 서버에서 삭제된 후 다시 로드해야 정확함.
+          // loadOrderData가 완료된 시점이므로 updateEstimatedPrice를 호출하면 갱신된 서버 데이터를 가져올 것임.
+          this.updateEstimatedPrice(); 
+        }
+      },
+
+      copyOrderData: function () {
         var data = this.orderData[this.viewingCompany];
-        
+
         if (!data || data.length === 0) {
           this.showAlert('No data to copy.');
           return;
         }
-        
+
         var text = '';
         for (var i = 0; i < data.length; i++) {
           text += data[i].join('\t') + '\n';
         }
-        
+
         var self = this;
-        
+
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(function() {
+          navigator.clipboard.writeText(text).then(function () {
             self.showAlert('Copied.', 2000);
-          }).catch(function(err) {
+          }).catch(function (err) {
             console.error('복사 실패:', err);
             self.fallbackCopy(text);
           });
@@ -3463,15 +4910,15 @@
           this.fallbackCopy(text);
         }
       },
-      
-      fallbackCopy: function(text) {
+
+      fallbackCopy: function (text) {
         var textarea = document.createElement('textarea');
         textarea.value = text;
         textarea.style.position = 'fixed';
         textarea.style.opacity = '0';
         document.body.appendChild(textarea);
         textarea.select();
-        
+
         try {
           document.execCommand('copy');
           this.showAlert('Copied.', 2000);
@@ -3479,22 +4926,22 @@
           console.error('복사 실패:', err);
           this.showAlert('Copy failed.');
         }
-        
+
         document.body.removeChild(textarea);
       },
-      
-      clearOrderList: function() {
+
+      clearOrderList: function () {
         var companyName = this.viewingCompany === 'SNG' ? 'SNG' : 'OUTRE';
-        
+
         if (!confirm(companyName + ' order list will be backed up and cleared. Continue?\n\nA backup will be saved in a hidden tab named with the date and time.')) {
           return;
         }
-        
+
         console.log('리스트 비우기: ' + this.viewingCompany);
-        
+
         var self = this;
         google.script.run
-          .withSuccessHandler(function(result) {
+          .withSuccessHandler(function (result) {
             if (result.success) {
               self.showAlert(result.message);
               self.loadOrderData(self.viewingCompany);
@@ -3502,60 +4949,668 @@
               self.showAlert(result.error);
             }
           })
-          .withFailureHandler(function(error) {
+          .withFailureHandler(function (error) {
             self.showAlert('Failed to clear the list.');
             console.error('비우기 오류:', error);
           })
           .clearOrderList(this.viewingCompany);
       },
-      
-      closeOrderModal: function() {
+
+      closeOrderModal: function () {
         this.orderModal.classList.remove('active');
+        this.showSection('results');
       },
 
       // ========================================
       // 백오더 모달 제어
       // ========================================
-      showBackorderModal: function() {
+      showBackorderModal: function () {
         console.log('백오더 프롬프트 모달 열기');
         this.backorderModal.classList.add('active');
       },
 
-      closeBackorderModal: function() {
+      closeBackorderModal: function () {
         this.backorderModal.classList.remove('active');
       },
 
-    handleBackorderChoice: function(choice) {
-      var rememberCheckbox = document.getElementById('backorderRememberCheckbox');
-      if (rememberCheckbox.checked) {
-        localStorage.setItem('backorderAutoFill', choice.toString());
-      }
-
-      // '아니오' 선택 시, 자동 입력된 백오더 수량을 제거하고 테이블을 새로고침합니다.
-      if (choice === false) {
-        for (var i = 0; i < this.products.length; i++) {
-          if (this.products[i].backorderApplied) {
-            this.products[i].backorderApplied = false;
-          }
+      handleBackorderChoice: function (choice) {
+        var rememberCheckbox = document.getElementById('backorderRememberCheckbox');
+        if (rememberCheckbox.checked) {
+          localStorage.setItem('backorderAutoFill', choice.toString());
         }
-        this.displayProducts(); // 변경사항을 적용하여 테이블을 다시 그립니다.
-        this.showAlert('Backorder auto-fill removed.');
-      }
 
-      this.closeBackorderModal();
-    },
+        // '아니오' 선택 시, 자동 입력된 백오더 수량을 제거하고 테이블을 새로고침합니다.
+        if (choice === false) {
+          for (var i = 0; i < this.products.length; i++) {
+            if (this.products[i].backorderApplied) {
+              this.products[i].backorderApplied = false;
+              this.products[i].quantity = 0;
+            }
+          }
+          this.displayProducts(); // 변경사항을 적용하여 테이블을 다시 그립니다.
+          this.showAlert('Backorder auto-fill removed.');
+        }
 
-      toggleBackorderRemember: function() {
+        this.closeBackorderModal();
+      },
+
+      toggleBackorderRemember: function () {
         var checkbox = document.getElementById('backorderRememberCheckbox');
         if (checkbox) {
           checkbox.checked = !checkbox.checked;
         }
+      },
+
+      // ========================================
+      // 즐겨찾기 토글 (현재 제품)
+      // ========================================
+      toggleCurrentFavorite: function () {
+        if (!this.products || this.products.length === 0) {
+          this.showAlert('제품이 없습니다.');
+          return;
+        }
+
+        // 첫 번째 실제 제품 찾기 (그룹 헤더 제외)
+        var firstProduct = null;
+        for (var i = 0; i < this.products.length; i++) {
+          if (!this.products[i].isGroupHeader) {
+            firstProduct = this.products[i];
+            break;
+          }
+        }
+
+        if (!firstProduct) {
+          this.showAlert('제품이 없습니다.');
+          return;
+        }
+
+        var item = {
+          description: firstProduct.itemName || '',
+          company: this.currentCompany,
+          primaryBarcode: this.currentPrimaryBarcode || firstProduct.barcode || '',
+          hasOrder: (firstProduct.shipped12mo || 0) > 0
+        };
+
+        this.toggleFavorite(item);
+        this.updateFavoriteButton();
+      },
+
+      // ========================================
+      // 즐겨찾기 버튼 상태 업데이트
+      // ========================================
+      updateFavoriteButton: function () {
+        var btn = document.getElementById('favoriteBtnResults');
+        if (!btn) return;
+
+        if (!this.products || this.products.length === 0) {
+          btn.textContent = '☆';
+          return;
+        }
+
+        var firstProduct = null;
+        for (var i = 0; i < this.products.length; i++) {
+          if (!this.products[i].isGroupHeader) {
+            firstProduct = this.products[i];
+            break;
+          }
+        }
+
+        if (!firstProduct) {
+          btn.textContent = '☆';
+          return;
+        }
+
+        var item = {
+          description: firstProduct.itemName || '',
+          company: this.currentCompany,
+          primaryBarcode: this.currentPrimaryBarcode || firstProduct.barcode || ''
+        };
+
+        btn.textContent = this.isFavorite(item) ? '★' : '☆';
+      },
+
+      // ========================================
+      // 키워드 분석 - 전체 DB 검색
+      // ========================================
+      showKeywordBreakdown: function () {
+        var self = this;
+        this.persistOrderAndThen(function () {
+          if (!self.products || self.products.length === 0) {
+            self.showAlert('제품이 없습니다.');
+            return;
+          }
+
+          // 첫 번째 제품명 가져오기
+          var itemName = '';
+          for (var i = 0; i < self.products.length; i++) {
+            if (!self.products[i].isGroupHeader) {
+              itemName = self.products[i].itemName || '';
+              break;
+            }
+          }
+
+          if (!itemName) {
+            self.showAlert('제품명이 없습니다.');
+            return;
+          }
+
+          // 키워드로 분리 (공백 기준)
+          var keywords = itemName.split(/\s+/).filter(function(k) { return k.length > 0; });
+
+          if (keywords.length === 0) {
+            self.showAlert('키워드가 없습니다.');
+            return;
+          }
+
+          // 회사명도 키워드에 추가
+          var companyName = self.currentCompany || 'OUTRE';
+          keywords.unshift(companyName);
+
+          // 모든 키워드를 선택된 상태로 설정
+          self.selectedKeywordsList = keywords.slice();
+          self.availableKeywords = keywords;
+
+          // 전체 DB 검색 (와일드카드 검색)
+          self.searchEntireDatabase();
+        });
+      },
+
+      // 전체 DB 검색 (OUTRE + SNG 모든 제품)
+      searchEntireDatabase: function () {
+        console.log('전체 DB 검색 시작');
+        this.processing = true;
+        this.showSection('loading');
+
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function (result) {
+            self.handleDatabaseLoadSuccess(result);
+          })
+          .withFailureHandler(function (error) {
+            self.handleDatabaseLoadError(error);
+          })
+          .getAllProducts();
+      },
+
+      handleDatabaseLoadSuccess: function (result) {
+        console.log('전체 DB 로드 성공', result);
+        this.processing = false;
+
+        if (!result || !result.success) {
+          this.showAlert('Failed to load database. Please try again.');
+          this.showSection('input');
+          return;
+        }
+
+        // 전체 DB 결과 저장
+        this.allDatabaseResults = result.results || { OUTRE: [], SNG: [] };
+
+        console.log('로드된 제품 수', {
+          OUTRE: this.allDatabaseResults.OUTRE.length,
+          SNG: this.allDatabaseResults.SNG.length
+        });
+
+        // 인라인 키워드 필터 표시
+        this.displayInlineKeywordFilters();
+
+        // 초기 필터링 적용 (모든 키워드 선택 상태)
+        this.applyKeywordFiltering();
+
+        // 키워드 결과 화면으로 전환
+        this.showSection('keyword-results');
+
+        // 메타 정보는 renderKeywordResults에서 업데이트됨 (검색 결과 개수)
+      },
+
+      handleDatabaseLoadError: function (error) {
+        console.error('전체 DB 로드 실패', error);
+        this.processing = false;
+        this.showSection('input');
+        this.showAlert('Failed to load database. Please try again.');
+      },
+
+      displayKeywordBreakdown: function (itemName, keywords) {
+        // 제품명 표시
+        var productEl = document.getElementById('keywordBreakdownProduct');
+        if (productEl) {
+          productEl.textContent = itemName;
+        }
+
+        // 키워드 버튼 생성
+        var buttonsEl = document.getElementById('keywordBreakdownButtons');
+        if (buttonsEl) {
+          buttonsEl.innerHTML = '';
+          this.selectedKeywordsList = [];
+
+          for (var i = 0; i < keywords.length; i++) {
+            var keyword = keywords[i];
+            var btn = document.createElement('button');
+            btn.className = 'keyword-btn-item';
+            btn.textContent = keyword;
+            btn.dataset.keyword = keyword;
+
+            var self = this;
+            btn.onclick = (function(kw) {
+              return function() {
+                self.toggleKeywordSelection(kw);
+              };
+            })(keyword);
+
+            buttonsEl.appendChild(btn);
+          }
+        }
+
+        // 선택된 키워드 표시 업데이트
+        this.updateSelectedKeywords();
+
+        // 모달 열기
+        if (this.keywordBreakdownModal) {
+          this.keywordBreakdownModal.classList.add('active');
+        }
+      },
+
+      toggleKeywordSelection: function (keyword) {
+        var index = this.selectedKeywordsList.indexOf(keyword);
+
+        if (index > -1) {
+          // 이미 선택됨 → 제거
+          this.selectedKeywordsList.splice(index, 1);
+        } else {
+          // 선택 안 됨 → 추가
+          this.selectedKeywordsList.push(keyword);
+        }
+
+        // 버튼 스타일 업데이트
+        var buttons = document.querySelectorAll('.keyword-btn-item');
+        for (var i = 0; i < buttons.length; i++) {
+          var btn = buttons[i];
+          var kw = btn.dataset.keyword;
+          if (this.selectedKeywordsList.indexOf(kw) > -1) {
+            btn.classList.add('selected');
+          } else {
+            btn.classList.remove('selected');
+          }
+        }
+
+        this.updateSelectedKeywords();
+      },
+
+      updateSelectedKeywords: function () {
+        var selectedEl = document.getElementById('selectedKeywords');
+        if (selectedEl) {
+          if (this.selectedKeywordsList.length === 0) {
+            selectedEl.textContent = 'No keywords selected';
+          } else {
+            selectedEl.textContent = this.selectedKeywordsList.join(' ');
+          }
+        }
+      },
+
+      searchSelectedKeywords: function () {
+        if (this.selectedKeywordsList.length === 0) {
+          this.showAlert('Please select at least one keyword.');
+          return;
+        }
+
+        // 모달 닫기
+        this.closeKeywordBreakdown();
+
+        // 선택된 키워드로 검색
+        var searchTerms = this.selectedKeywordsList.join(' ');
+        this.handleSearchInput(searchTerms, 'keyword-breakdown');
+      },
+
+      closeKeywordBreakdown: function () {
+        if (this.keywordBreakdownModal) {
+          this.keywordBreakdownModal.classList.remove('active');
+        }
+        this.selectedKeywordsList = [];
+      },
+
+      // ========================================
+      // 인라인 키워드 필터 표시 및 관리
+      // ========================================
+      displayInlineKeywordFilters: function () {
+        var container = document.getElementById('keywordBreakdownInline');
+        var buttonsContainer = document.getElementById('keywordBreakdownButtonsInline');
+
+        if (!container || !buttonsContainer) return;
+
+        // 키워드가 있으면 표시
+        if (this.availableKeywords && this.availableKeywords.length > 0) {
+          buttonsContainer.innerHTML = '';
+
+          for (var i = 0; i < this.availableKeywords.length; i++) {
+            var keyword = this.availableKeywords[i];
+            var btn = document.createElement('button');
+            btn.className = 'keyword-btn-inline';
+            btn.textContent = keyword;
+            btn.dataset.keyword = keyword;
+
+            // 초기 상태: 모든 키워드가 선택된 상태 (파란 배경)
+            if (this.selectedKeywordsList.indexOf(keyword) > -1) {
+              btn.classList.add('selected');
+            }
+
+            var self = this;
+            btn.onclick = (function(kw) {
+              return function() {
+                self.toggleInlineKeyword(kw);
+              };
+            })(keyword);
+
+            buttonsContainer.appendChild(btn);
+          }
+
+          container.style.display = 'flex';
+        } else {
+          container.style.display = 'none';
+        }
+      },
+
+      toggleInlineKeyword: function (keyword) {
+        var index = this.selectedKeywordsList.indexOf(keyword);
+
+        if (index > -1) {
+          // 선택 해제
+          this.selectedKeywordsList.splice(index, 1);
+        } else {
+          // 선택
+          this.selectedKeywordsList.push(keyword);
+        }
+
+        // 버튼 스타일 업데이트
+        var buttons = document.querySelectorAll('.keyword-btn-inline');
+        for (var i = 0; i < buttons.length; i++) {
+          var btn = buttons[i];
+          var kw = btn.dataset.keyword;
+          if (this.selectedKeywordsList.indexOf(kw) > -1) {
+            btn.classList.add('selected');
+          } else {
+            btn.classList.remove('selected');
+          }
+        }
+
+        // 필터링 적용
+        this.applyKeywordFiltering();
+      },
+
+      applyKeywordFiltering: function () {
+        console.log('키워드 필터링 적용', {
+          selectedKeywords: this.selectedKeywordsList,
+          allResultsOUTRE: this.allDatabaseResults.OUTRE ? this.allDatabaseResults.OUTRE.length : 0,
+          allResultsSNG: this.allDatabaseResults.SNG ? this.allDatabaseResults.SNG.length : 0
+        });
+
+        // 선택된 키워드가 없으면 전체 DB 표시
+        if (this.selectedKeywordsList.length === 0) {
+          var allOutre = this.allDatabaseResults.OUTRE || [];
+          var allSng = this.allDatabaseResults.SNG || [];
+          this.keywordResults = {
+            OUTRE: allOutre,
+            SNG: allSng
+          };
+          this.renderKeywordTabs();
+          var allResults = allOutre.concat(allSng);
+          this.renderKeywordResults(allResults);
+          return;
+        }
+
+        // 회사 필터링 체크 (OUTRE/SNG 키워드 포함 여부)
+        var hasOUTREKeyword = this.selectedKeywordsList.indexOf('OUTRE') > -1;
+        var hasSNGKeyword = this.selectedKeywordsList.indexOf('SNG') > -1;
+
+        // 회사명을 제외한 나머지 키워드
+        var contentKeywords = [];
+        for (var i = 0; i < this.selectedKeywordsList.length; i++) {
+          var kw = this.selectedKeywordsList[i];
+          if (kw !== 'OUTRE' && kw !== 'SNG') {
+            contentKeywords.push(kw);
+          }
+        }
+
+        var filteredResults = [];
+
+        // OUTRE 검색 (OUTRE 키워드가 선택되어 있거나, 두 회사 모두 선택 해제된 경우)
+        if (hasOUTREKeyword || (!hasOUTREKeyword && !hasSNGKeyword)) {
+          if (this.allDatabaseResults.OUTRE) {
+            filteredResults = filteredResults.concat(
+              this.filterByKeywords(this.allDatabaseResults.OUTRE, contentKeywords)
+            );
+          }
+        }
+
+        // SNG 검색 (SNG 키워드가 선택되어 있거나, 두 회사 모두 선택 해제된 경우)
+        if (hasSNGKeyword || (!hasOUTREKeyword && !hasSNGKeyword)) {
+          if (this.allDatabaseResults.SNG) {
+            filteredResults = filteredResults.concat(
+              this.filterByKeywords(this.allDatabaseResults.SNG, contentKeywords)
+            );
+          }
+        }
+
+        console.log('필터링 결과', { count: filteredResults.length });
+
+        // 회사별로 결과 저장 (탭 개수 업데이트용)
+        var outreResults = [];
+        var sngResults = [];
+        for (var i = 0; i < filteredResults.length; i++) {
+          if (filteredResults[i].company === 'OUTRE') {
+            outreResults.push(filteredResults[i]);
+          } else if (filteredResults[i].company === 'SNG') {
+            sngResults.push(filteredResults[i]);
+          }
+        }
+
+        // keywordResults에 저장 (탭 개수 표시용)
+        this.keywordResults = {
+          OUTRE: outreResults,
+          SNG: sngResults
+        };
+
+        // 탭 개수 업데이트
+        this.renderKeywordTabs();
+
+        // 필터링된 결과로 렌더링
+        this.renderKeywordResults(filteredResults);
+      },
+
+      // 키워드로 제품 필터링
+      filterByKeywords: function (products, keywords) {
+        if (keywords.length === 0) {
+          return products;
+        }
+
+        var filtered = [];
+        for (var i = 0; i < products.length; i++) {
+          var item = products[i];
+          var itemName = (item.itemName || '').toUpperCase();
+
+          // 모든 키워드가 제품명에 포함되어 있는지 확인
+          var matchesAll = true;
+          for (var j = 0; j < keywords.length; j++) {
+            var keyword = keywords[j].toUpperCase();
+            if (itemName.indexOf(keyword) === -1) {
+              matchesAll = false;
+              break;
+            }
+          }
+
+          if (matchesAll) {
+            filtered.push(item);
+          }
+        }
+
+        return filtered;
+      },
+
+      // ========================================
+      // 예상 가격 업데이트 (현재 제품 + 장바구니 전체)
+      // ========================================
+      applyEstimatedPriceText: function (total) {
+        var priceEl = document.getElementById('estimatedPrice');
+        var priceResultsEl = document.getElementById('estimatedPriceResults');
+        var safeTotal = isNaN(total) ? 0 : total;
+        var priceText = '$' + safeTotal.toFixed(2);
+
+        if (priceEl) {
+          priceEl.textContent = priceText;
+        }
+        if (priceResultsEl) {
+          priceResultsEl.textContent = priceText;
+        }
+      },
+
+      setCartTotal: function (company, total) {
+        if (!company) return;
+        if (!this.cartTotals) {
+          this.cartTotals = { OUTRE: null, SNG: null };
+        }
+        this.cartTotals[company] = total;
+        if (this.currentCompany === company) {
+          this.updateEstimatedPrice({ useCacheOnly: true });
+        }
+      },
+
+      refreshCartTotal: function (company) {
+        if (!company) return;
+        this.loadOrderData(company);
+      },
+
+      updateEstimatedPrice: function (options) {
+        console.log('updateEstimatedPrice 호출됨', {
+          currentCompany: this.currentCompany,
+          productsCount: this.products ? this.products.length : 0
+        });
+
+        var priceEl = document.getElementById('estimatedPrice');
+        var priceResultsEl = document.getElementById('estimatedPriceResults');
+
+        console.log('가격 요소 찾기', {
+          priceEl: !!priceEl,
+          priceResultsEl: !!priceResultsEl
+        });
+
+        // 현재 회사가 없으면 숨김
+        if (!this.currentCompany) {
+          console.log('회사 정보 없음 - 가격 표시 숨김');
+          if (priceEl) {
+            priceEl.classList.remove('visible', 'outre', 'sng');
+            priceEl.style.display = 'none';
+          }
+          if (priceResultsEl) {
+            priceResultsEl.classList.remove('visible', 'outre', 'sng');
+            priceResultsEl.style.display = 'none';
+          }
+          return;
+        }
+
+        // 회사별 스타일 적용
+        var companyClass = this.currentCompany === 'OUTRE' ? 'outre' : 'sng';
+
+        if (priceEl) {
+          priceEl.classList.add('visible');
+          priceEl.classList.remove('outre', 'sng');
+          priceEl.classList.add(companyClass);
+          priceEl.style.display = 'block';
+        }
+
+        if (priceResultsEl) {
+          priceResultsEl.classList.add('visible');
+          priceResultsEl.classList.remove('outre', 'sng');
+          priceResultsEl.classList.add(companyClass);
+          priceResultsEl.style.display = 'block';
+        }
+
+        function parsePrice(text) {
+          if (!text) return null;
+          var matches = text.match(/\$?[\d,]+(?:\.\d{1,2})?/g);
+          if (!matches || matches.length === 0) return null;
+          var last = matches[matches.length - 1];
+          var parsed = parseFloat(last.replace(/[^0-9.]/g, ''));
+          return isNaN(parsed) ? null : parsed;
+        }
+
+        var cachedTotal = this.cartTotals ? this.cartTotals[this.currentCompany] : null;
+        if (cachedTotal !== null && cachedTotal !== undefined) {
+          this.applyEstimatedPriceText(cachedTotal);
+          return;
+        }
+
+        if (options && options.useCacheOnly) {
+          return;
+        }
+
+        // 서버에서 장바구니 데이터 가져와서 합산
+        var self = this;
+        google.script.run
+          .withSuccessHandler(function(result) {
+            var cartTotal = 0;
+
+            if (result && result.success && result.data) {
+              var rows = result.data;
+              var headers = rows[0] || [];
+              var extPriceIdx = headers.indexOf('EXT PRICE');
+              if (extPriceIdx === -1) {
+                extPriceIdx = headers.indexOf('Ext Price');
+              }
+              var unitPriceIdx = headers.indexOf('UNIT PRICE');
+              if (unitPriceIdx === -1) {
+                unitPriceIdx = headers.indexOf('Unit Price');
+              }
+              var qtyIdx = headers.indexOf('수량');
+              if (qtyIdx === -1) {
+                qtyIdx = headers.indexOf('?˜ëŸ‰');
+              }
+
+              // 헤더 제외하고 데이터 행만 처리
+              for (var i = 1; i < rows.length; i++) {
+                var row = rows[i];
+                var extPriceStr = extPriceIdx !== -1 ? (row[extPriceIdx] || '') : '';
+                if (!extPriceStr && row.length > 1) {
+                  extPriceStr = row[row.length - 2] || '';
+                }
+                var extPrice = parsePrice(extPriceStr);
+                if (extPrice !== null) {
+                  cartTotal += extPrice;
+                  continue;
+                }
+
+                var unitPriceStr = unitPriceIdx !== -1 ? (row[unitPriceIdx] || '') : '';
+                var unitPrice = parsePrice(unitPriceStr);
+                var qtyValue = qtyIdx !== -1 ? row[qtyIdx] : '';
+                var qty = parseFloat(qtyValue);
+                if (!isNaN(unitPrice) && !isNaN(qty)) {
+                  cartTotal += unitPrice * qty;
+                }
+              }
+            }
+
+            console.log('장바구니 데이터 수신', {
+              success: result.success,
+              cartTotal: cartTotal,
+              rowsCount: result.data ? result.data.length : 0
+            });
+
+            self.setCartTotal(self.currentCompany, cartTotal);
+            self.applyEstimatedPriceText(cartTotal);
+          })
+          .withFailureHandler(function(error) {
+            console.error('장바구니 데이터 가져오기 실패', error);
+            var fallbackTotal = self.cartTotals ? self.cartTotals[self.currentCompany] : null;
+            if (fallbackTotal !== null && fallbackTotal !== undefined) {
+              self.applyEstimatedPriceText(fallbackTotal);
+              return;
+            }
+            self.applyEstimatedPriceText(0);
+          })
+          .getOrderData(this.currentCompany);
       }
     };
-    
+
     // 앱 시작
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function() {
+      document.addEventListener('DOMContentLoaded', function () {
         app.init();
       });
     } else {
@@ -3563,4 +5618,5 @@
     }
   </script>
 </body>
+
 </html>
