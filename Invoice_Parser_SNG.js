@@ -105,27 +105,47 @@ function parseSNGLineItems(lines) {
     var scanStartIndex = i + 1;
     var nextLine = lines[i + 1] || '';
 
-    var priceInfo = parseSNGPriceLine(lines[i + 1]);
-    if (priceInfo) {
-      unitPrice = priceInfo.yourPrice;
-      extPrice = priceInfo.yourExtended;
-      scanStartIndex = i + 2;
+    // ========================================
+    // CRITICAL: 병합 라인 처리
+    // ========================================
+    if (itemInfo.hasMergedPrices) {
+      // 병합 라인: Your 가격이 이미 파싱되어 있음
+      unitPrice = itemInfo.yourPrice;
+      extPrice = itemInfo.yourExtended;
 
-      // CRITICAL: 가격 라인에 컬러 텍스트가 있으면 추가
-      if (priceInfo.colorText && hasSNGColorPattern(priceInfo.colorText)) {
-        colorLines.push(priceInfo.colorText);
-      } else if (!priceInfo.colorText) {
-        // 가격 라인에 컬러가 없으면 다음 라인 확인
-        // CRITICAL: 가격 라인 바로 아래 컬러가 붙는 경우 대응
-        if (hasSNGColorPattern(lines[i + 2])) {
-          colorLines.push(lines[i + 2]);
-          scanStartIndex = i + 3;
-        }
+      // 컬러 텍스트가 있으면 추가
+      if (itemInfo.colorText && hasSNGColorPattern(itemInfo.colorText)) {
+        colorLines.push(itemInfo.colorText);
       }
-    } else if (hasSNGColorPattern(nextLine)) {
-      // 가격 라인이 없고 바로 컬러 라인인 경우
-      colorLines.push(nextLine);
-      scanStartIndex = i + 2;
+
+      // 다음 라인부터 컬러 스캔 시작 (가격 라인 없음)
+      scanStartIndex = i + 1;
+
+      Logger.log('✅ 병합 라인 처리: unitPrice=' + unitPrice + ', extPrice=' + extPrice);
+    } else {
+      // 일반 라인: 다음 라인에서 가격 라인 찾기
+      var priceInfo = parseSNGPriceLine(lines[i + 1]);
+      if (priceInfo) {
+        unitPrice = priceInfo.yourPrice;
+        extPrice = priceInfo.yourExtended;
+        scanStartIndex = i + 2;
+
+        // CRITICAL: 가격 라인에 컬러 텍스트가 있으면 추가
+        if (priceInfo.colorText && hasSNGColorPattern(priceInfo.colorText)) {
+          colorLines.push(priceInfo.colorText);
+        } else if (!priceInfo.colorText) {
+          // 가격 라인에 컬러가 없으면 다음 라인 확인
+          // CRITICAL: 가격 라인 바로 아래 컬러가 붙는 경우 대응
+          if (hasSNGColorPattern(lines[i + 2])) {
+            colorLines.push(lines[i + 2]);
+            scanStartIndex = i + 3;
+          }
+        }
+      } else if (hasSNGColorPattern(nextLine)) {
+        // 가격 라인이 없고 바로 컬러 라인인 경우
+        colorLines.push(nextLine);
+        scanStartIndex = i + 2;
+      }
     }
 
     var colorScan = collectSNGColorLines(scanStartIndex, lines);
@@ -276,9 +296,14 @@ function parseSNGPrefix(prefix) {
 /**
  * SNG 아이템 라인 파싱 (가격 토큰 기반 + 토큰 파싱)
  * CRITICAL: parseSNGPrefix() 공통 로직 사용
+ * CRITICAL: 병합 라인 감지 (5개 이상 가격 토큰)
+ *   - 일반 라인 (2개 토큰): List Price/Extended만 추출
+ *   - 병합 라인 (5개 토큰): 앞 2개(List) + 뒤 3개(Your/Extended/Discounted) 모두 추출
+ *   - 예: "ALI 6 6 SAGXXL3 ... 123.00 738.00 118.00 708.00 30.00 1B - 6"
+ *     → List: 123.00/738.00, Your: 118.00/708.00/30.00, Color: "1B - 6"
  *
  * @param {string} rawLine - 라인 원문
- * @return {Object|null} 파싱된 아이템 정보
+ * @return {Object|null} 파싱된 아이템 정보 (hasMergedPrices 플래그 포함)
  */
 function parseSNGItemLine(rawLine) {
   if (!rawLine) return null;
@@ -299,9 +324,36 @@ function parseSNGItemLine(rawLine) {
     return null;
   }
 
-  // 2단계: 마지막 2개를 list price/extended로 해석
-  var listPriceMatch = priceMatches[priceMatches.length - 2];
-  var listExtendedMatch = priceMatches[priceMatches.length - 1];
+  // ========================================
+  // CRITICAL: 병합 라인 감지 (5개 이상 가격 토큰)
+  // ========================================
+  var hasMergedPrices = priceMatches.length >= 5;
+  var listPriceMatch, listExtendedMatch;
+  var yourPrice, yourExtended, discounted;
+  var colorText = '';
+
+  if (hasMergedPrices) {
+    // 병합 라인: 앞 2개 = List, 뒤 3개 = Your
+    listPriceMatch = priceMatches[0];
+    listExtendedMatch = priceMatches[1];
+
+    var yourPriceMatch = priceMatches[priceMatches.length - 3];
+    var yourExtendedMatch = priceMatches[priceMatches.length - 2];
+    var discountedMatch = priceMatches[priceMatches.length - 1];
+
+    yourPrice = parseAmount(yourPriceMatch.text);
+    yourExtended = parseAmount(yourExtendedMatch.text);
+    discounted = parseAmount(discountedMatch.text);
+
+    // 마지막 가격 뒤의 텍스트가 컬러 텍스트
+    colorText = normalized.slice(discountedMatch.index + discountedMatch.text.length).trim();
+
+    Logger.log('✅ SNG 병합 라인 감지: ' + priceMatches.length + '개 가격 토큰');
+  } else {
+    // 일반 라인: 마지막 2개만 List Price/Extended
+    listPriceMatch = priceMatches[priceMatches.length - 2];
+    listExtendedMatch = priceMatches[priceMatches.length - 1];
+  }
 
   // 가격 앞부분이 아이템 정보
   var prefix = normalized.slice(0, listPriceMatch.index).trim();
@@ -315,14 +367,25 @@ function parseSNGItemLine(rawLine) {
   var parsed = parseSNGPrefix(prefix);
   if (!parsed) return null;
 
-  return {
+  var result = {
     qtyOrdered: parsed.qtyOrdered,
     qtyShipped: parsed.qtyShipped,
     itemId: parsed.itemId,
     description: parsed.description,
     listPrice: parseAmount(listPriceMatch.text),
-    listExtended: parseAmount(listExtendedMatch.text)
+    listExtended: parseAmount(listExtendedMatch.text),
+    hasMergedPrices: hasMergedPrices
   };
+
+  // 병합 라인인 경우 Your 가격과 컬러 텍스트 추가
+  if (hasMergedPrices) {
+    result.yourPrice = yourPrice;
+    result.yourExtended = yourExtended;
+    result.discounted = discounted;
+    result.colorText = colorText;
+  }
+
+  return result;
 }
 
 /**

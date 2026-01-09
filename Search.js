@@ -107,7 +107,15 @@ function searchBarcodeInCompany(barcode, companyKey) {
     var colorCount = Object.keys(uniqueColors).length;
     
     debugLog('고유 COLOR 개수', { count: colorCount });
-    
+
+    // ========================================
+    // CRITICAL: 다른 길이 제품 확장 로직 비활성화
+    // 문제: 장바구니에서 클릭 시 모든 길이에 동일한 수량이 적용됨
+    // 예: 14" NATURAL BLACK 1개 입력 → 10", 12", 14" 모두 1개씩 표시
+    // 해결: 검색한 제품만 표시 (확장 검색 비활성화)
+    // 복원 필요 시 아래 주석 해제
+    // ========================================
+    /*
     var skipExpansion = false;
     if (companyKey === 'OUTRE' && baseItemName) {
       var baseNameUpper = baseItemName.toString().toUpperCase();
@@ -116,21 +124,21 @@ function searchBarcodeInCompany(barcode, companyKey) {
         debugLog('확장 로직 스킵 (X-PRESSION BRAID-PRE STRETCHED BRAID)', { itemName: baseItemName });
       }
     }
-    
+
     if (!skipExpansion && colorCount <= CONFIG.MAX_COLORS_FOR_EXPANSION) {
       var simplifiedBase = removeInchPattern(baseItemName);
       debugLog('확장 검색 시작', { simplified: simplifiedBase });
-      
+
       if (simplifiedBase && simplifiedBase !== baseItemName) {
         for (var i = 1; i < data.length; i++) {
           var currentItemName = data[i][colMap[company.columns.ITEM_NAME]];
           var currentBarcode = data[i][colMap[company.columns.BARCODE]];
-          
+
           if (!currentItemName || !currentBarcode) continue;
-          
+
           var currentSimplified = removeInchPattern(currentItemName);
           var key = currentBarcode.toString();
-          
+
           if (currentSimplified === simplifiedBase && !barcodeMap[key]) {
             barcodeMap[key] = true;
             products.push({
@@ -144,10 +152,13 @@ function searchBarcodeInCompany(barcode, companyKey) {
             });
           }
         }
-        
+
         debugLog('확장 검색 후', { count: products.length });
       }
     }
+    */
+
+    debugLog('다른 길이 제품 확장 로직 비활성화됨');
     
     products = sortProducts(products);
     products = attachInvoiceMetricsToProducts(products, companyKey);
@@ -1292,6 +1303,8 @@ function searchByKeyword(query, lastSelectedCompany) {
       SNG: searchInIndex('SNG', normalizedQuery, normalizedTokens)
     };
 
+    results.OUTRE = collapseOutreKeywordResults(results.OUTRE);
+
     var meta = {
       totalCount: results.OUTRE.length + results.SNG.length,
       outreCount: results.OUTRE.length,
@@ -1477,7 +1490,7 @@ function generateKeywordSuggestions(query) {
   return Object.keys(suggestions);
 }
 
-function getQuantityViewByDescription(description, companyKey, primaryBarcode) {
+function getQuantityViewByDescription(description, companyKey, primaryBarcode, enableLengthGrouping) {
   try {
     if (!description || !companyKey) {
       return { success: false, error: 'No results found.' };
@@ -1493,7 +1506,12 @@ function getQuantityViewByDescription(description, companyKey, primaryBarcode) {
 
     var resolvedPrimaryBarcode = resolvePrimaryBarcodeForDescription(description, companyKey, primaryBarcode);
     var groupedDescriptions = [description];
-    if (baseProducts.length <= 4) {
+
+    // ========================================
+    // CRITICAL: 다른 길이 제품 확장 로직 비활성화 (키워드 검색)
+    // 바코드 검색과 동일한 이유로 비활성화
+    // ========================================
+    if (enableLengthGrouping && companyKey === 'OUTRE') {
       var relatedDescriptions = getRelatedDescriptionsByBase(description, companyKey);
       if (relatedDescriptions.length > 0) {
         groupedDescriptions = groupedDescriptions.concat(relatedDescriptions);
@@ -1597,10 +1615,126 @@ function buildProductsByDescription(description, companyKey) {
 function normalizeLengthBase(description) {
   if (!description) return '';
   var text = description.toString().toUpperCase();
-  text = text.replace(/\b\d+\s*(INCHES|INCH|IN)\b/g, ' ');
-  text = text.replace(/\b\d+\s*\"/g, ' ');
+  text = text.replace(/\b\d+\s*(?:\"|\u201C|\u201D|\u2033|INCHES|INCH|IN)/g, ' ');
   text = text.replace(/\s+/g, ' ').trim();
   return normalizeSearchQuery(text);
+}
+
+function extractLengthTokens(description) {
+  if (!description) return [];
+  var matches = description.toString().match(/\b\d+\s*(?:\"|\u201C|\u201D|\u2033|INCHES|INCH|IN)/gi);
+  if (!matches) return [];
+  var lengthSet = {};
+  for (var i = 0; i < matches.length; i++) {
+    var num = parseInt(matches[i], 10);
+    if (!isNaN(num)) {
+      lengthSet[num] = true;
+    }
+  }
+  var lengths = Object.keys(lengthSet).map(function(value) {
+    return parseInt(value, 10);
+  });
+  lengths.sort(function(a, b) { return a - b; });
+  return lengths.map(function(value) { return value + '"'; });
+}
+
+function buildLengthGroupDescription(description, lengths) {
+  if (!description) return '';
+  var base = description.toString()
+    .replace(/\b\d+\s*(?:\"|\u201C|\u201D|\u2033|INCHES|INCH|IN)/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!lengths || lengths.length === 0) return base;
+  return (base + ' ' + lengths.join('')).trim();
+}
+
+function mergeKeywordColorCounts(items) {
+  var counts = { total: 0, active: 0, discontinueUnknown: 0, discontinued: 0 };
+  for (var i = 0; i < items.length; i++) {
+    var itemCounts = items[i].colorCounts || {};
+    counts.total += itemCounts.total || 0;
+    counts.active += itemCounts.active || 0;
+    counts.discontinueUnknown += itemCounts.discontinueUnknown || 0;
+    counts.discontinued += itemCounts.discontinued || 0;
+  }
+  return counts;
+}
+
+function selectKeywordRepresentative(items) {
+  var best = items[0];
+  for (var i = 1; i < items.length; i++) {
+    var bestShipped = best.primaryShipped12mo || 0;
+    var currentShipped = items[i].primaryShipped12mo || 0;
+    if (currentShipped > bestShipped) {
+      best = items[i];
+    }
+  }
+  return best;
+}
+
+function collapseOutreKeywordResults(items) {
+  if (!items || items.length <= 1) return items || [];
+  var groups = {};
+  var order = [];
+
+  for (var i = 0; i < items.length; i++) {
+    var description = items[i].description || '';
+    var baseKey = normalizeLengthBase(description) || normalizeSearchQuery(description);
+    var lengthList = extractLengthTokens(description);
+    var packKey = lengthList.length > 0 ? lengthList.join('') : '';
+    var groupKey = baseKey + '||' + packKey;
+    if (!groups[groupKey]) {
+      groups[groupKey] = { items: [], lengthList: lengthList, packKey: packKey };
+      order.push(groupKey);
+    }
+    groups[groupKey].items.push(items[i]);
+  }
+
+  var collapsed = [];
+  for (var j = 0; j < order.length; j++) {
+    var group = groups[order[j]];
+    if (!group || group.items.length === 0) continue;
+    if (group.items.length === 1) {
+      collapsed.push(group.items[0]);
+      continue;
+    }
+
+    var lengthList = group.lengthList || [];
+    if (lengthList.length <= 1) {
+      for (var k = 0; k < group.items.length; k++) {
+        collapsed.push(group.items[k]);
+      }
+      continue;
+    }
+
+    lengthList.sort(function(a, b) {
+      return parseInt(a, 10) - parseInt(b, 10);
+    });
+
+    var representative = selectKeywordRepresentative(group.items);
+    var mergedCounts = mergeKeywordColorCounts(group.items);
+    var maxShipped = 0;
+    for (var m = 0; m < group.items.length; m++) {
+      maxShipped = Math.max(maxShipped, group.items[m].primaryShipped12mo || 0);
+    }
+
+    var displayDescription = buildLengthGroupDescription(representative.description, lengthList);
+    var mergedItem = {
+      description: representative.description,
+      itemName: displayDescription,
+      displayDescription: displayDescription,
+      itemNumber: representative.itemNumber,
+      company: representative.company,
+      primaryBarcode: representative.primaryBarcode,
+      colorCounts: mergedCounts,
+      dominantStatus: representative.dominantStatus,
+      primaryShipped12mo: maxShipped
+    };
+
+    collapsed.push(mergedItem);
+  }
+
+  return collapsed;
 }
 
 function getRelatedDescriptionsByBase(description, companyKey) {
@@ -1784,6 +1918,7 @@ function getAllProducts() {
 
     var outreProducts = getAllProductsFromCompany('OUTRE');
     var sngProducts = getAllProductsFromCompany('SNG');
+    outreProducts = collapseOutreKeywordResults(outreProducts);
 
     debugLog('전체 제품 로드 완료', {
       OUTRE: outreProducts.length,

@@ -548,6 +548,77 @@ function moveDataToSheet(existingData, targetSheetName) {
 }
 
 /**
+ * Invoice Number로 인보이스 삭제
+ * CRITICAL: 중복 인보이스 제거용
+ *
+ * @param {string} sheetName - 대상 시트 이름 (INVOICE_SNG 또는 INVOICE_OUTRE)
+ * @param {string} invoiceNo - 삭제할 Invoice Number
+ * @return {number} 삭제된 라인 수
+ */
+function deleteInvoiceByNumber(sheetName, invoiceNo) {
+  try {
+    var sheet = getSheet(sheetName);
+    var lastRow = sheet.getLastRow();
+
+    if (lastRow <= 1) {
+      return 0; // 데이터 없음
+    }
+
+    // 전체 데이터 읽기 (헤더 포함)
+    var data = sheet.getRange(1, 1, lastRow, sheet.getLastColumn()).getValues();
+    var headers = data[0];
+
+    // Invoice No 컬럼 찾기
+    var invoiceNoCol = -1;
+    for (var i = 0; i < headers.length; i++) {
+      if (headers[i] === 'Invoice No') {
+        invoiceNoCol = i;
+        break;
+      }
+    }
+
+    if (invoiceNoCol === -1) {
+      debugLog('deleteInvoiceByNumber 오류', { error: 'Invoice No 컬럼 없음' });
+      return 0;
+    }
+
+    // 삭제할 행 찾기 (역순으로 삭제하기 위해 인덱스 수집)
+    var rowsToDelete = [];
+    for (var r = 1; r < data.length; r++) { // 헤더 제외
+      var rowInvoiceNo = data[r][invoiceNoCol];
+      if (rowInvoiceNo && rowInvoiceNo.toString() === invoiceNo.toString()) {
+        rowsToDelete.push(r + 1); // 시트 행 번호 (1-based)
+      }
+    }
+
+    if (rowsToDelete.length === 0) {
+      return 0; // 중복 없음
+    }
+
+    // 역순으로 삭제 (인덱스 꼬임 방지)
+    for (var i = rowsToDelete.length - 1; i >= 0; i--) {
+      sheet.deleteRow(rowsToDelete[i]);
+    }
+
+    debugLog('Invoice 삭제 완료', {
+      sheetName: sheetName,
+      invoiceNo: invoiceNo,
+      deletedRows: rowsToDelete.length
+    });
+
+    return rowsToDelete.length;
+
+  } catch (error) {
+    debugLog('deleteInvoiceByNumber 오류', {
+      sheetName: sheetName,
+      invoiceNo: invoiceNo,
+      error: error.toString()
+    });
+    throw error;
+  }
+}
+
+/**
  * PARSING 시트 비우기
  */
 function clearParsingSheet() {
@@ -633,14 +704,15 @@ function saveToParsingSheet(data) {
 
 /**
  * 확정 (PARSING → INVOICE_SNG/OUTRE로 이동)
+ * CRITICAL: 중복 인보이스 자동 덮어쓰기
  */
 function confirmParsing() {
   try {
     var ui = SpreadsheetApp.getUi();
-    
+
     var parsingSheet = getSheet(CONFIG.INVOICE.PARSING_SHEET);
     var data = parsingSheet.getDataRange().getValues();
-    
+
     if (data.length <= 1) {
       ui.alert(
         '데이터 없음',
@@ -649,10 +721,10 @@ function confirmParsing() {
       );
       return;
     }
-    
+
     // Vendor 확인 (첫 번째 데이터 행)
     var vendor = data[1][0]; // VENDOR 컬럼
-    
+
     if (!vendor || (vendor !== 'SNG' && vendor !== 'OUTRE')) {
       ui.alert(
         '오류',
@@ -661,43 +733,72 @@ function confirmParsing() {
       );
       return;
     }
-    
-    var targetSheetName = vendor === 'SNG' ? 
-      CONFIG.INVOICE.SNG_SHEET : 
+
+    // Invoice Number 추출 (두 번째 컬럼)
+    var invoiceNo = data[1][1]; // Invoice No 컬럼
+
+    if (!invoiceNo || invoiceNo.toString().trim() === '') {
+      ui.alert(
+        '오류',
+        'Invoice Number가 비어있습니다.\n파싱 데이터를 확인해주세요.',
+        ui.ButtonSet.OK
+      );
+      return;
+    }
+
+    var targetSheetName = vendor === 'SNG' ?
+      CONFIG.INVOICE.SNG_SHEET :
       CONFIG.INVOICE.OUTRE_SHEET;
-    
+
+    // ========================================
+    // CRITICAL: 중복 인보이스 체크 및 삭제
+    // ========================================
+    var duplicateCount = deleteInvoiceByNumber(targetSheetName, invoiceNo);
+
+    var confirmMessage = vendor + ' 인보이스를 ' + targetSheetName + ' 탭에 추가하시겠습니까?\n\n' +
+      'Invoice No: ' + invoiceNo + '\n' +
+      '라인 수: ' + (data.length - 1) + '개';
+
+    if (duplicateCount > 0) {
+      confirmMessage += '\n\n⚠️ 기존 인보이스 ' + duplicateCount + '개 라인이 삭제되고 덮어쓰기됩니다.';
+    }
+
     var response = ui.alert(
       '확정 확인',
-      vendor + ' 인보이스를 ' + targetSheetName + ' 탭에 추가하시겠습니까?\n\n' +
-      '라인 수: ' + (data.length - 1) + '개',
+      confirmMessage,
       ui.ButtonSet.YES_NO
     );
-    
+
     if (response !== ui.Button.YES) {
       return;
     }
-    
+
     // 데이터 복사 (성능 개선: 배치 쓰기 사용)
-    // moveDataToSheet()는 이미 헤더를 제외하고 배치로 쓰기 때문에
-    // data (헤더 포함)를 그대로 전달
     moveDataToSheet(data, targetSheetName);
 
     var dataRows = data.slice(1); // 로그용
     debugLog('확정 완료 (배치)', {
       vendor: vendor,
       targetSheet: targetSheetName,
-      rows: dataRows.length
+      invoiceNo: invoiceNo,
+      deletedRows: duplicateCount,
+      addedRows: dataRows.length
     });
-    
+
     // PARSING 시트 비우기
     clearParsingSheet();
-    
+
+    var successMessage = dataRows.length + '개 라인이 ' + targetSheetName + ' 탭에 추가되었습니다.';
+    if (duplicateCount > 0) {
+      successMessage += '\n(기존 ' + duplicateCount + '개 라인 덮어쓰기)';
+    }
+
     ui.alert(
       '확정 완료',
-      dataRows.length + '개 라인이 ' + targetSheetName + ' 탭에 추가되었습니다.',
+      successMessage,
       ui.ButtonSet.OK
     );
-    
+
   } catch (error) {
     var ui = SpreadsheetApp.getUi();
     ui.alert(
@@ -705,7 +806,7 @@ function confirmParsing() {
       '확정 중 오류가 발생했습니다:\n' + error.toString(),
       ui.ButtonSet.OK
     );
-    
+
     debugLog('confirmParsing 오류', { error: error.toString() });
     logError('confirmParsing', error);
   }

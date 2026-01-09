@@ -2800,6 +2800,10 @@
         }
 
         // 그 외 → 키워드 검색
+        var preferredCompany = this.currentCompany || this.lastSelectedCompany || '';
+        if (preferredCompany) {
+          this.lastSelectedCompany = preferredCompany;
+        }
         this.keywordQuery = input;
         this.processing = true;
         this.showSection('loading');
@@ -2812,7 +2816,7 @@
           .withFailureHandler(function (error) {
             self.handleKeywordSearchError(error);
           })
-          .searchByKeyword(input, this.lastSelectedCompany || '');
+          .searchByKeyword(input, preferredCompany);
       },
 
       searchFromKeyboard: function () {
@@ -2862,6 +2866,7 @@
 
         this.products = result.products || [];
         this.currentCompany = result.company;  // OUTRE 또는 SNG
+        this.lastSelectedCompany = result.company || this.lastSelectedCompany;
         this.allMode = false;
         this.updateAllToggle();
 
@@ -3179,7 +3184,7 @@
         desc.className = 'keyword-desc';
 
         // 키워드 하이라이트 적용
-        var descText = item.description || '';
+        var descText = item.displayDescription || item.description || '';
         if (highlightKeywords.length > 0) {
           desc.innerHTML = this.highlightKeywords(descText, highlightKeywords);
         } else {
@@ -3393,7 +3398,12 @@
 
                 })
 
-                .getQuantityViewByDescription(item.description, item.company, item.primaryBarcode);
+                .getQuantityViewByDescription(
+                  item.description,
+                  item.company,
+                  item.primaryBarcode,
+                  !!item.groupByLength
+                );
 
             },
 
@@ -3692,6 +3702,8 @@
 
       // 수량 초기화
       clearQuantity: function () {
+        var didClear = false;
+
         if (this.allMode) {
           for (var i = 0; i < this.products.length; i++) {
             this.products[i].quantity = 0;
@@ -3700,17 +3712,88 @@
           this.showQuantityFlash('0');
           this.allMode = false;
           this.updateAllToggle();
-          this.updateEstimatedPrice();
-          return;
+          didClear = true;
+        } else {
+          if (this.selectedRow === -1) return;
+
+          this.products[this.selectedRow].quantity = 0;
+          this.displayProducts();
+          this.selectRow(this.selectedRow);
+          this.showQuantityFlash('0');
+          didClear = true;
         }
 
-        if (this.selectedRow === -1) return;
-
-        this.products[this.selectedRow].quantity = 0;
-        this.displayProducts();
-        this.selectRow(this.selectedRow);
-        this.showQuantityFlash('0');
         this.updateEstimatedPrice();
+
+        if (didClear) {
+          this.persistClearedQuantities();
+        }
+      },
+
+      // CLEAR 트리거: 수량 0도 장바구니에 반영해 삭제 처리
+      persistClearedQuantities: function () {
+        if (this.processing) return;
+        if (!this.currentCompany || !this.products || this.products.length === 0) return;
+
+        var clearedUpcSet = {};
+        for (var i = 0; i < this.products.length; i++) {
+          if (this.products[i].isGroupHeader) continue;
+          if ((this.products[i].quantity || 0) !== 0) continue;
+          var normalizedUpc = normalizeOrderKey(this.products[i].barcode);
+          if (normalizedUpc) {
+            clearedUpcSet[normalizedUpc] = true;
+          }
+        }
+
+        if (Object.keys(clearedUpcSet).length === 0) return;
+
+        this.applyLocalOrderClear(this.currentCompany, clearedUpcSet);
+
+        var self = this;
+        this.processing = true;
+
+        google.script.run
+          .withSuccessHandler(function (result) {
+            self.processing = false;
+            if (!result || !result.success) {
+              self.showAlert(result && result.error ? result.error : 'Failed to save quantities.');
+              return;
+            }
+          })
+          .withFailureHandler(function (error) {
+            self.processing = false;
+            self.showAlert('Failed to save quantities.');
+            console.error('CLEAR 저장 오류:', error);
+          })
+          .addToOrder(this.products, this.currentCompany);
+      },
+
+      // 새로고침 없이 로컬 장바구니 데이터에서 삭제 반영
+      applyLocalOrderClear: function (company, clearedUpcSet) {
+        var data = this.orderData[company];
+        if (!data || data.length === 0) return;
+
+        var headers = data[0] || [];
+        var upcIdx = headers.indexOf('UPC');
+        var upcList = this.orderData[company + '_upcList'] || [];
+
+        var nextRows = [headers];
+        var nextUpcList = [];
+
+        for (var i = 1; i < data.length; i++) {
+          var row = data[i];
+          var rowUpc = upcIdx !== -1 ? row[upcIdx] : (upcList[i - 1] || '');
+          var normalizedRowUpc = normalizeOrderKey(rowUpc);
+
+          if (normalizedRowUpc && clearedUpcSet[normalizedRowUpc]) {
+            continue;
+          }
+
+          nextRows.push(row);
+          nextUpcList.push(upcList[i - 1] || rowUpc || '');
+        }
+
+        this.displayOrderData({ success: true, data: nextRows, upcList: nextUpcList }, company);
       },
 
       toggleAllMode: function () {
@@ -5144,6 +5227,15 @@
 
         // 전체 DB 결과 저장
         this.allDatabaseResults = result.results || { OUTRE: [], SNG: [] };
+
+        var preferredCompany = this.currentCompany || this.lastSelectedCompany || '';
+        if (preferredCompany && this.allDatabaseResults[preferredCompany] && this.allDatabaseResults[preferredCompany].length > 0) {
+          this.activeKeywordCompany = preferredCompany;
+        } else if ((this.allDatabaseResults.OUTRE || []).length === 0 && (this.allDatabaseResults.SNG || []).length > 0) {
+          this.activeKeywordCompany = 'SNG';
+        } else {
+          this.activeKeywordCompany = 'OUTRE';
+        }
 
         console.log('로드된 제품 수', {
           OUTRE: this.allDatabaseResults.OUTRE.length,

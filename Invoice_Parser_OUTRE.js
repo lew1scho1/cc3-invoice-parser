@@ -251,6 +251,34 @@ function parseOUTREItem(lineIndex, lines) {
   var qtyShipped = parseInt(lines[lineIndex].trim()) || 0;
   var qtyOrdered = qtyShipped;
   var itemId = '';
+  var isOUTREMetaLine = function(line) {
+    if (!line) return false;
+
+    var normalized = normalizeOutreText(line);
+    if (!normalized) return false;
+
+    var upper = normalized.toUpperCase();
+    var hasPhoneKeyword = upper.indexOf('FAX') > -1 ||
+      upper.indexOf('PHONE') > -1 ||
+      upper.indexOf('TOLL FREE') > -1;
+    var hasPhoneNumber = /\b\d{3}\s*[-.\s]?\s*\d{3}\s*[-.\s]?\s*\d{4}\b/.test(normalized);
+
+    if (hasPhoneKeyword && hasPhoneNumber) {
+      return true;
+    }
+
+    var hasHeaderKeyword = upper.indexOf('INVOICE DATE') > -1 ||
+      upper.indexOf('ORDER DATE') > -1 ||
+      upper.indexOf('SHIP VIA') > -1 ||
+      upper.indexOf('TERMS') > -1 ||
+      upper.indexOf('BILL TO') > -1 ||
+      upper.indexOf('SHIP TO') > -1 ||
+      upper.indexOf('SALES REP') > -1;
+    var hasColon = normalized.indexOf(':') > -1;
+    var hasDate = /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/.test(normalized);
+
+    return hasHeaderKeyword && (hasColon || hasDate);
+  };
   var extractPriceValues = function(line) {
     if (!line) return [];
 
@@ -307,6 +335,11 @@ function parseOUTREItem(lineIndex, lines) {
       } else {
         Logger.log('  price line (multi): ' + priceValues.join(', '));
       }
+      continue;
+    }
+
+    if (isOUTREMetaLine(nextLine)) {
+      Logger.log('  skip meta line: ' + nextLine.substring(0, 80));
       continue;
     }
 
